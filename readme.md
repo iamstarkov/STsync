@@ -2,7 +2,7 @@
 
 Sublime Text plugin for syncronising configuration. Read more in my userecho [suggestion](http://sublimetext.userecho.com/topic/111402-syncing-settings-files-and-plugins-list-with-gistgithubcom/).
 
-**Important: ** In development.
+**Important:** In development.
 
 ## Current state ##
 
@@ -24,8 +24,7 @@ Where:
 * gistId — gist id you own to import in './import' folder
 * folder (optional) — path to folder, which you want to upload to just created gist. By default, './import'.
 
-
-Roadmap:
+## Roadmap: ##
 
 * auth by OAUTH key
 * merging logic
