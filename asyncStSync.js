@@ -4,7 +4,7 @@ function init(cb) {
 	getSettings (cb);
 }
 
-
+// TODO: сделать ассинхронное чтение
 function getSettings (cb) {
 	var settings = fs.readFileSync(this.path+this.file, 'utf-8');
 	
@@ -16,12 +16,14 @@ function getSettings (cb) {
 
 }
 
+// WTF?!
 function runSync(settings) {
 	doSync(settings, function() {
 		setTimeout(doSync(settings), settings.updateFrequency);
 	});
 }
 
+// ты не должен хотеть этого
 function doSync (settings) {
 	// simple atomic operation
 }
@@ -33,6 +35,9 @@ function getGistId (settings, cb) {
 		if (isValidGistId(gistId)) {
 
 			settings.gistId = gistId;
+			// если вдруг колбек не будет передан, то с точки зрения пользователя
+			// этого асинхронного метода он НИКОГДА не завершится.
+			// по этому нужно выбрасывать исключения, чтобы весь скрипт падал
 			if (_.isFunction(cb)) { cb(settings); }
 
 		} else {
@@ -47,10 +52,17 @@ function getGistId (settings, cb) {
 	});
 }
 
-function getAllGists (settings, cb, pageNumber, gistsAccumulator) {
+// колбек ВСЕГДА идет поледним параметром. без исключений!
+// смотри исходники nodejs на предмет того, как они обрабатывают необязательные параметры
+// NOTE: что такое gistsAccumulator?
+// название метода не соответствует тому, что он делает.
+// ты смешал в кучу вытягивание одной страницы и перебор страниц.
+// а можно страницы вытягивать параллельно?
+function getAllGists (settings, pageNumber, gistsAccumulator, cb) {
+	// TODO: переписать условие в этом ифе. pageNumber может быть определен,
+	// но не являться допустимым числом, например
 	if (_.isUndefined(pageNumber)) { pageNumber = 1; }
 
-	
 	github.gists.getFromUser(
 		{
 			'user': 'login',
@@ -60,18 +72,24 @@ function getAllGists (settings, cb, pageNumber, gistsAccumulator) {
 		function (err, res) {
 			gistsAccumulator = _.union(res, gistsAccumulator);
 			
+			// NOTE: а на последней старнице может быть perPage элементов?
+			// Например, 20 элементов, 10 на странице => итого 2 страницы с одинаковым количеством элементов
 			if (_.isEqual( res.length, settings.perPage)) {
 				// not last page
-				getAllGists(settings, cb, pageNumber++, gistsAccumulator);
+				getAllGists(settings, pageNumber++, gistsAccumulator, cb);
 			} else {
 				// last page, return all accumulated gists
-				if (_.isFunction(cb)) { cb(err, gistsAccumulator); }
+				// а что это за err? ошибка последней старницы?
+				// может она была на 4-ой, а на 10 (последней) ошибки не было.
+				// была ли ошибка вообще в этом случае?
+				cb(err, gistsAccumulator);
 			}
 
 		}
 	);
 	
 }
+
 
 function createGist (settings, cb) {
 	
@@ -81,9 +99,9 @@ function createGist (settings, cb) {
 			'public': true,
 			'files': {}
 		},
-		function(err, res) {
-			if (_.isFunction(cb)) { cb(err, res); }
-		}
+		// не нужно делать ни каких проверок
+		// если колбек не передали, то это фатальная ошибка и надо выбрасывать исключение
+		cb
 	);
 	
 }
