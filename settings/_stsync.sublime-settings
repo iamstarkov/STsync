@@ -1,0 +1,16 @@
+{
+	"updateFrequency": 100,
+	"perPage": 100,
+	"syncExceptions": 
+	[
+		"stsync-auth.sublime-settings"
+	],
+	"isValid": 
+	[
+		"Default (Linux).sublime-keymap",
+		"Default (OSX).sublime-keymap",
+		"Default (Windows).sublime-keymap",
+		"Preferences.sublime-settings",
+		"stsync.sublime-settings"
+	]
+}
