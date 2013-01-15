@@ -1,12 +1,15 @@
 var fs = require('fs'),
 	_  = require('underscore'),
-	Step  = require('step'),
+	moment = require('moment');
 	GitHubApi = require('github'),
 	github = new GitHubApi( {version: '3.0.0'} );
 
+
 STsync = function () {
 	
-	this.settingsFile = './settings/stsync.sublime-settings';
+	this.settingsFolder = './settings/';
+	this.settingsFile = this.settingsFolder + 'stsync.sublime-settings';
+	this.lastUpdateFile = 'stsync.last-sync';
 	this.syncIsGoing = false;
 	
 	this.username = process.argv[2];
@@ -19,53 +22,100 @@ STsync = function () {
 		password: this.password
 	});
 
-	this.getPluginSettings = function () {
-		console.log('getPluginSettings');
+
+	this.updateLocal = function () {
+		console.log('updateLocal');
 		var self = this;
-		//
-		// console.log(self.settingsFile);
-		//
-		var st =  fs.readFileSync(self.settingsFile, 'utf-8');
-		// console.log(typeof st);
-		st = eval('(' + st + ')');
-		// console.log(typeof st);
-		return st;
+		// body...
 	};
 
-	this.setPluginSettings = function (settings) {
-		console.log('setPluginSettings');
+	this.updateRemote = function () {
+		console.log('updateRemote');
+		var self = this;
+	};
+
+	this.getGist = function (cb) {
+		console.log('getGist');
+		var self = this;
+
+		github.gists.get(
+			{
+				id: self.options('gistId')
+			},
+			function (err, res) {
+				cb(err, res);
+			}
+		);
+	};
+
+	this.getLocalFiles = function () {
+		console.log('getLocalFiles');
+		var self = this;
+
+		var files = {};
+
+		_.each(
+			fs.readdirSync(self.settingsFolder),
+			function (element, index, list) {
+				files[element] = {
+					'content': fs.readFileSync('./'+self.settingsFolder+'/'+element, 'utf-8')
+				};
+			}
+		);
+
+		return files;
+	};
+
+	this.getRemoteLastUpdate = function(gist) {
+		console.log('getRemoteLastUpdate');
 		var self = this;
 		
-		// console.log(typeof settings);
-		// console.log(settings);
-		settings = JSON.stringify(settings);
-		// console.log(typeof settings, '===================');
-		settings = settings
-			.replace(/\{/g, "{\n")
-			.replace(/,/g, ",\n")
-			.replace(/\n"/g, "\n\t\"")
-			.replace(/:/g, ": ")
-			.replace(/\[/g, "\n\t[\n\t")
-			.replace(/\]/g, "\n\t]")
-			.replace(/\}/g, "\n}")
-		;
-		console.log(settings);
-
-		fs.writeFileSync(this.settingsFile, settings, 'utf-8');
+		return gist.files[self.lastUpdateFile].content;
 	};
+	
+	this.getLocalLastUpdate = function() {
+		console.log('getLocalLastUpdate');
+		var self = this;
 
+		return fs.readFileSync(
+			self.settingsFolder+self.lastUpdateFile,
+			'utf-8'
+		);
+	};
+	
+	this.updateLocalLastUpdate = function() {
+		console.log('updateLocalLastUpdate');
+		var self = this;
+
+		var asd = _.max(
+			_.map(
+				fs.readdirSync(self.settingsFolder),
+				function (file, index, list) {
+					return moment(
+						fs.statSync(self.settingsFolder+file).mtime
+					).unix();
+				}
+			)
+		);
+
+		fs.writeFileSync(
+			self.settingsFolder+self.lastUpdateFile,
+			new Date().getTime(),
+			'utf-8'
+		);
+		// console.log(asd);
+	};
+	
 	this.init = function (cb) {
 		console.log('init');
 		var self = this;
 		
-		if (self.isValidGistId(self.getPluginSettings().gistId)) {
+		if ( self.isValidGistId( self.options('gistId') ) ) {
 			cb();
 		} else {
-			getGistId(cb);
+			createGistId(cb);
 		}
-		
 	};
-
 
 	this.runSync = function () {
 		console.log('runSync');
@@ -75,24 +125,37 @@ STsync = function () {
 			if (!self.syncIsGoing) {
 				self.doSync();
 			}
-		}, ~~self.getPluginSettings().updateFrequency);
-
+		}, ~~self.options('updateFrequency') );
 	};
 
 	this.doSync = function () {
 		console.log('doSync');
 		var self = this;
+
 		self.syncIsGoing = true;
+		
+		getGist(function (err, res) {
+			if (!err) {
+				
+				var localUpdate = self.getLocalLastUpdate();
+				var remoteUpdate = self.getRemoteLastUpdate(res);
+
+				console.log(localUpdate);
+				console.log(remoteUpdate);
+
+				self.syncIsGoing = false;
+			}
+		});
+
 
 		
-		self.syncIsGoing = false;
 	};
 
-	this.getGistId = function (cb) {
+	this.createGistId = function (cb) {
 		console.log('getGistId');
 		var self = this;
 
-		getAllGists(1, self.getPluginSettings().perPage, null, function (err, res) {
+		getAllGists(1, self.getOptions().perPage, null, function (err, res) {
 			console.log('getGistId callback');
 			console.log(typeof res);
 			var validGist = _.find(
@@ -104,33 +167,24 @@ STsync = function () {
 				}
 			);
 
-			// console.log(validGist.id);
-			// console.log(typeof validGist.id);
-			// console.log('validGist.id', validGist.id);
-			
-
 			if ((validGist) && self.isValidGistId(validGist.id)) {
+
 				console.log('valid gist id');
-				var newSettings = self.getPluginSettings();
-				
-				newSettings.gistId = ~~validGist.id;
-				self.setPluginSettings(newSettings);
+
+				self.options('gistId', validGist.id);
 
 				cb();
 
 			} else {
+
 				console.log('not valid gist id');
 				createGist(function (err, res) {
 
-					
-					var newSettings = self.getPluginSettings();
-					
-					newSettings.gistId = res.id;
-					self.setPluginSettings(newSettings);
+					self.options('gistId', res.id);
 
 					cb();
-
 				});
+
 			}
 
 		});
@@ -162,35 +216,23 @@ STsync = function () {
 
 			}
 		);
-		
-	};
-
-	this.processFilesForExport = function () {
-		
 	};
 
 	this.createGist = function (cb) {
 		console.log('createGist');
 		var self = this;
-
-		var files = {
-			"file1.txt": {
-				"content": "String file contents"
-			}
-		};
+		self.updateLocalLastUpdate();
 
 		github.gists.create(
 			{
 				'description': 'optional desc: ',
 				'public': true,
-				"files": files
+				"files": self.getLocalFiles()
 			},
 			function(err, res) {
-				// console.log(res);
 				cb(err, res);
 			}
 		);
-		
 	};
 
 	this.isValidSettings = function (gist) {
@@ -201,7 +243,7 @@ STsync = function () {
 			// console.log(value);
 			return key;
 		});
-		var required = self.getPluginSettings().requiredFiles;
+		var required = self.getOptions().requiredFiles;
 
 		// console.log(gistFiles);
 		// console.log(required);
@@ -213,27 +255,84 @@ STsync = function () {
 
 	this.isValidGistId = function (id) {
 		console.log('isValidGistId');
+		var self = this;
+
 		id = parseInt(id, 10);
 		// console.log(id);
 		// console.log(id);
 		return (_.isNumber(id) && !_.isNaN(id));
 	};
 
+	this.options = function () {
+		console.log('options');
+		var self = this;
 
+		var first, second;
+		if (arguments[0]) {
+			first = arguments[0];
+		}
+		if (arguments[1]) {
+			second = arguments[1];
+		}
 
+		switch (arguments.length) {
+			case 0:
+				return self.getOptions();
+			case 1:
+				if (_.isString(first)) {
+					return self.getOptions()[first];
+				}
+				if (_.isObject(first)) {
+					return self.setOptions()[first];
+				}
+				break;
+			case 2:
+				var newSettings = self.getOptions();
+				newSettings[first] = second;
+				self.setOptions(newSettings);
+				break;
+		}
+	};
 	
+	this.getOptions = function () {
+		console.log('getOptions');
+		var self = this;
+
+		var st =  fs.readFileSync(self.settingsFile, 'utf-8');
+
+		st = eval('(' + st + ')');
+
+		return st;
+	};
+
+	this.setOptions = function (settings) {
+		console.log('setOptions');
+		var self = this;
+		
+		settings = JSON.stringify(settings);
+
+		settings = settings
+			.replace(/\{/g, "{\n")
+			.replace(/,/g, ",\n")
+			.replace(/\n"/g, "\n\t\"")
+			.replace(/:/g, ": ")
+			.replace(/\[/g, "\n\t[\n\t")
+			.replace(/\]/g, "\n\t]")
+			.replace(/\}/g, "\n}")
+		;
+
+		fs.writeFileSync(this.settingsFile, settings, 'utf-8');
+	};
+
 	//
 	this.init(this.runSync);
 	//
-	
+
+
 	/*
-	
 	this.createGist(function (err, res) {
 		console.log(res.id);
 	});
-	 */
+	*/
 
-	
-	
 }();
-
