@@ -2,30 +2,34 @@
 
 Sublime Text plugin for syncronising configuration. Read more in my userecho [suggestion](http://sublimetext.userecho.com/topic/111402-syncing-settings-files-and-plugins-list-with-gistgithubcom/).
 
-**Important:** In development.
+### Current state: in active development ###
 
-## Current state ##
+## Changelog: ##
 
-Two basic javascript file for using with [NodeJS](http://nodejs.org/): *export.js*, *import.js*.
+* 0.0.2 (15 jan 2012) — Initializing finished
+* 0.0.1 (09 jan 2012) — Testing import/export functionality
+
+## Roadmap ##
+
+* 0.0.3 — Synchronization step
+* 0.0.4 — Update local functionality
+* 0.0.5 — Update remote functionality
+* 0.0.6 — Working synchronization
+* 0.0.7 — Writing tests
+* 0.0.8 — Passing tests
+* 0.0.9 — Utility authorization by OAUTH via web interface
+* 0.0.10 — Create python wrapper
+* 0.0.N — not known yet…
 
 ## Requirements ##
 
-    npm install github underscore
+    npm install github underscore moment
 
 ## Usage ##
     
-    node import.js login pswd gistId
-    node export.js login pswd [folder]
+    node asyncStSync.js login password
 
 Where:
 
 * login — your github login
-* pswd — your github password
-* gistId — gist id you own to import in './import' folder
-* folder (optional) — path to folder, which you want to upload to just created gist. By default, './import'.
-
-## Roadmap: ##
-
-* auth by OAUTH key
-* merging logic
-* python wrapper for using as ST plugin
+* password — your github password
