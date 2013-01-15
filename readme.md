@@ -11,15 +11,16 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Roadmap ##
 
-* 0.0.3 — Synchronization step
-* 0.0.4 — Update local functionality
-* 0.0.5 — Update remote functionality
-* 0.0.6 — Working synchronization
-* 0.0.7 — Writing tests
-* 0.0.8 — Passing tests
-* 0.0.9 — Utility authorization by OAUTH via web interface
-* 0.0.10 — Create python wrapper
-* 0.0.N — not known yet…
+* 0.0.3 — Synchronization step coded
+* 0.0.4 — Update local functionality coded
+* 0.0.5 — Update remote functionality coded
+* 0.0.6 — Synchronization worked
+* 0.0.7 — Refactoring
+* 0.0.8 — Documentation writed and compiled
+* 0.0.9 — Tests writed
+* 0.0.10 — Tests passing
+* 0.0.11 — Created OAUTH authorization via web interface
+* 0.0.N — Created python sketch and other steps, which are not known yet…
 
 ## Requirements ##
 
