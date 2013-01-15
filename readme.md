@@ -6,12 +6,12 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Changelog: ##
 
+* 0.0.3 *(15 jan 2012)* — Synchronization step finalized
 * 0.0.2 *(15 jan 2012)* — Initializing finished
 * 0.0.1 *(09 jan 2012)* — Testing import/export functionality
 
 ## Roadmap ##
 
-* 0.0.3 — Synchronization step coded
 * 0.0.4 — Update local functionality coded
 * 0.0.5 — Update remote functionality coded
 * 0.0.6 — Synchronization worked

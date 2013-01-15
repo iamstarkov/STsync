@@ -43,6 +43,7 @@ STsync = function () {
 				id: self.options('gistId')
 			},
 			function (err, res) {
+				console.log('getGist callback');
 				cb(err, res);
 			}
 		);
@@ -66,14 +67,14 @@ STsync = function () {
 		return files;
 	};
 
-	this.getRemoteLastUpdate = function(gist) {
+	this.getRemoteLastUpdate = function (gist) {
 		console.log('getRemoteLastUpdate');
 		var self = this;
 		
 		return gist.files[self.lastUpdateFile].content;
 	};
 	
-	this.getLocalLastUpdate = function() {
+	this.getLocalLastUpdate = function () {
 		console.log('getLocalLastUpdate');
 		var self = this;
 
@@ -83,7 +84,7 @@ STsync = function () {
 		);
 	};
 	
-	this.updateLocalLastUpdate = function() {
+	this.updateLocalLastUpdate = function () {
 		console.log('updateLocalLastUpdate');
 		var self = this;
 
@@ -91,9 +92,11 @@ STsync = function () {
 			_.map(
 				fs.readdirSync(self.settingsFolder),
 				function (file, index, list) {
-					return moment(
-						fs.statSync(self.settingsFolder+file).mtime
-					).unix();
+					if (file != self.lastUpdateFile) {
+						return moment(
+							fs.statSync(self.settingsFolder+file).mtime
+						).unix();
+					}
 				}
 			)
 		);
@@ -113,7 +116,7 @@ STsync = function () {
 		if ( self.isValidGistId( self.options('gistId') ) ) {
 			cb();
 		} else {
-			createGistId(cb);
+			findGistId(cb);
 		}
 	};
 
@@ -129,19 +132,21 @@ STsync = function () {
 	};
 
 	this.doSync = function () {
+		console.log('==================');
 		console.log('doSync');
 		var self = this;
-
-		self.syncIsGoing = true;
 		
+		self.syncIsGoing = true;
+
 		getGist(function (err, res) {
 			if (!err) {
+				self.updateLocalLastUpdate();
 				
 				var localUpdate = self.getLocalLastUpdate();
 				var remoteUpdate = self.getRemoteLastUpdate(res);
 
-				console.log(localUpdate);
-				console.log(remoteUpdate);
+				console.log('localUpdate:\n\t', localUpdate);
+				console.log('remoteUpdate:\n\t', remoteUpdate);
 
 				self.syncIsGoing = false;
 			}
@@ -151,12 +156,13 @@ STsync = function () {
 		
 	};
 
-	this.createGistId = function (cb) {
-		console.log('getGistId');
+	this.findGistId = function (cb) {
+		console.log('findGistId');
 		var self = this;
 
-		getAllGists(1, self.getOptions().perPage, null, function (err, res) {
-			console.log('getGistId callback');
+
+		getAllGists(1, ~~self.options('perPage'), null, function (err, res) {
+			console.log('findGistId callback');
 			console.log(typeof res);
 			var validGist = _.find(
 				res,
@@ -328,6 +334,15 @@ STsync = function () {
 	this.init(this.runSync);
 	//
 
+	/*
+	
+	setTimeout(function () {
+		self.updateLastUpdateFile();
+		console.log(
+			self.getLocalLastUpdate();
+		);
+	}, 100);
+	 */
 
 	/*
 	this.createGist(function (err, res) {
