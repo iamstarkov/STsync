@@ -88,24 +88,44 @@ STsync = function () {
 		console.log('updateLocalLastUpdate');
 		var self = this;
 
-		var asd = _.max(
-			_.map(
-				fs.readdirSync(self.settingsFolder),
-				function (file, index, list) {
-					if (file != self.lastUpdateFile) {
-						return moment(
-							fs.statSync(self.settingsFolder+file).mtime
-						).unix();
+		var lastUpdateNew = _.max(
+			_.compact(
+				_.map(
+					fs.readdirSync(self.settingsFolder),
+					function (file, index, list) {
+						var mtime, mtime_unix;
+						if (file != self.lastUpdateFile) {
+							mtime = fs.statSync(self.settingsFolder+file).mtime;
+							mtime_unix = moment(mtime).unix();
+
+							return mtime_unix;
+						}
 					}
-				}
+				)
 			)
 		);
 
-		fs.writeFileSync(
-			self.settingsFolder+self.lastUpdateFile,
-			new Date().getTime(),
-			'utf-8'
-		);
+
+		/*
+		console.log('lastUpdateNew\n\t', lastUpdateNew);
+		console.log('getLocalLastUpdate\n\t', self.getLocalLastUpdate() );
+		 */
+
+
+		if (
+			parseInt(lastUpdateNew, 10) !== parseInt(self.getLocalLastUpdate(), 10)
+		) {
+			// console.log('Local files was updated');
+			fs.writeFileSync(
+				self.settingsFolder+self.lastUpdateFile,
+				lastUpdateNew,
+				'utf-8'
+			);
+		} else {
+			// console.log('Nothing happens here');
+		}
+		/*
+		 */
 		// console.log(asd);
 	};
 	
@@ -163,7 +183,7 @@ STsync = function () {
 
 		getAllGists(1, ~~self.options('perPage'), null, function (err, res) {
 			console.log('findGistId callback');
-			console.log(typeof res);
+			// console.log(typeof res);
 			var validGist = _.find(
 				res,
 				function (gist) {
@@ -256,7 +276,8 @@ STsync = function () {
 		var intersection = _.intersection(required, gistFiles);
 		// console.log(intersection);
 
-		return (required.length === intersection.length);
+		// return (required.length === intersection.length);
+		return _.isEqual(required, intersection);
 	};
 
 	this.isValidGistId = function (id) {
@@ -335,13 +356,19 @@ STsync = function () {
 	//
 
 	/*
+	var self = this
 	
-	setTimeout(function () {
-		self.updateLastUpdateFile();
+	// self.updateLocalLastUpdate();
+	
+	setInterval(function () {
+		console.log('----')
+		self.updateLocalLastUpdate();
 		console.log(
-			self.getLocalLastUpdate();
+			'\t' + self.getLocalLastUpdate()
 		);
-	}, 100);
+	}, 1000);
+	 */
+	/*
 	 */
 
 	/*
