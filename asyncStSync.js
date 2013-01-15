@@ -165,15 +165,19 @@ STsync = function () {
 				var localUpdate = self.getLocalLastUpdate();
 				var remoteUpdate = self.getRemoteLastUpdate(res);
 
-				console.log('localUpdate:\n\t', localUpdate);
-				console.log('remoteUpdate:\n\t', remoteUpdate);
+				if (localUpdate != remoteUpdate) {
+					console.log('sync required');
+
+					if (localUpdate > remoteUpdate) {
+						console.log('REMOTE required sync');
+					} else {
+						console.log('LOCAL required sync');
+					}
+				}
 
 				self.syncIsGoing = false;
 			}
 		});
-
-
-		
 	};
 
 	this.findGistId = function (cb) {
