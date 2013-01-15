@@ -1,13 +1,13 @@
 # STsync #
 
-Sublime Text plugin for syncronising configuration. Read more in my userecho [suggestion](http://sublimetext.userecho.com/topic/111402-syncing-settings-files-and-plugins-list-with-gistgithubcom/).
+Sublime Text plugin for syncronising configuration. Read more in my userecho [suggestion][1].
 
 ### Current state: in active development ###
 
 ## Changelog: ##
 
-* 0.0.2 (15 jan 2012) — Initializing finished
-* 0.0.1 (09 jan 2012) — Testing import/export functionality
+* 0.0.2 *(15 jan 2012)* — Initializing finished
+* 0.0.1 *(09 jan 2012)* — Testing import/export functionality
 
 ## Roadmap ##
 
@@ -34,3 +34,12 @@ Where:
 
 * login — your github login
 * password — your github password
+
+
+
+
+
+
+
+
+[1]: http://sublimetext.userecho.com/topic/111402-syncing-settings-files-and-plugins-list-with-gistgithubcom/ 'Syncing settings files and plugins list with gist.github.com'
