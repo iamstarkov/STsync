@@ -4,7 +4,6 @@ var fs = require('fs'),
 	GitHubApi = require('github'),
 	github = new GitHubApi( {version: '3.0.0'} );
 
-
 STsync = function () {
 	
 	this.settingsFolder = './settings/';
@@ -26,12 +25,76 @@ STsync = function () {
 	this.updateLocal = function () {
 		console.log('updateLocal');
 		var self = this;
+
+		
 		// body...
 	};
 
-	this.updateRemote = function () {
+	this.updateRemote = function (gist, cb) {
 		console.log('updateRemote');
 		var self = this;
+
+		var remoteFiles = self.getGistFilesList(gist);
+		var localFiles = self.getLocalFilesList();
+
+		var deletingFilesList = _.difference(remoteFiles, localFiles);
+
+		console.log('number of remoteFiles count\n\t', remoteFiles.length);
+		console.log('number of localFiles\n\t', localFiles.length);
+		console.log('number of filesToDelete\n\t', deletingFilesList.length);
+		console.log('number of filesToAdd\n\t', _.difference(localFiles, remoteFiles).length);
+
+		var existingFiles = self.getLocalFiles();
+		var deletingFiles = self.getDeletingRemoteFiles(deletingFilesList);
+
+
+		// console.log('existingFiles\n\t', existingFiles);
+		// console.log('deletingFiles\n\t', deletingFiles);
+		/*
+		
+		var files = existingFiles;
+		if (deletingFiles.length !== 0) {
+			files = _.extend(files, deletingFiles);
+		}
+
+		*/
+
+		// console.log('files\n\t', files);
+		var msg = {
+			"id": gist.id,
+			"description": gist.description,
+			// "files": files
+			// "files": deletingFiles
+			"files": existingFiles
+		};
+		
+		console.log('MSG\n', msg);
+
+		github.gists.edit(
+			msg,
+			function(err, res) {
+				if (err) {
+					throw('FUCKING SHIT');
+				}
+				console.log('updateRemote callback');
+				cb(err, res);
+			}
+		);
+
+	};
+
+	this.getGistFilesList = function (gist) {
+		console.log('getGistFilesList');
+		var self = this;
+		return _.map(gist.files, function(value, key) {
+			return key;
+		});
+	};
+	
+	this.getLocalFilesList = function () {
+		console.log('getLocalFilesList');
+		var self = this;
+		return fs.readdirSync(self.settingsFolder);
 	};
 
 	this.getGist = function (cb) {
@@ -49,6 +112,19 @@ STsync = function () {
 		);
 	};
 
+	this.getDeletingRemoteFiles = function (filesLists) {
+		console.log('getDeletingRemoteFiles');
+		
+
+		var files = {};
+
+		_.each(filesLists, function (element, index, list) {
+			files[element] = null;
+		});
+
+		return files;
+	};
+
 	this.getLocalFiles = function () {
 		console.log('getLocalFiles');
 		var self = this;
@@ -56,15 +132,55 @@ STsync = function () {
 		var files = {};
 
 		_.each(
-			fs.readdirSync(self.settingsFolder),
+			self.getLocalFilesList(),
 			function (element, index, list) {
 				files[element] = {
-					'content': fs.readFileSync('./'+self.settingsFolder+'/'+element, 'utf-8')
+					"content": self.escapeQuotes(fs.readFileSync('./'+self.settingsFolder+'/'+element, 'utf-8'))
 				};
 			}
 		);
 
 		return files;
+	};
+
+	this.escapeQuotes = function(string) {
+		// https://en.wikipedia.org/wiki/Quotation_mark#Typing_quotation_marks_on_a_computer_keyboard
+		// https://en.wikipedia.org/wiki/Apostrophe#Entering_apostrophes
+		// https://en.wikipedia.org/wiki/Prime_(symbol)#Representations
+		return string
+			.replace(/‘/g, "&lsquo;") // Single opening quote mark
+			.replace(/’/g, "&rsquo;") // Single closing quote mark & Apostrophe
+			.replace(/“/g, "&ldquo;") // Double opening quote mark
+			.replace(/’/g, "&rdquo;") // Double closing quote mark
+			.replace(/′/g, "&prime;") // Single prime
+			.replace(/″/g, "&Prime;") // Double prime
+			.replace(/″/g, "&Prime;") // Double prime
+			.replace(/‴/g, "U+2034")  // Triple prime
+			.replace(/‴/g, "U+2034")  // Triple prime
+			.replace(/⁗/g, "U+2057")  // Quadruple prime
+			.replace(/ʹ/g, "U+02B9")  // Modifier letter prime
+			.replace(/ʺ/g, "U+2057")  // Modifier letter double prime
+		;
+	};
+
+	this.unescapeQuotes = function(string) {
+		// https://en.wikipedia.org/wiki/Quotation_mark#Typing_quotation_marks_on_a_computer_keyboard
+		// https://en.wikipedia.org/wiki/Apostrophe#Entering_apostrophes
+		// https://en.wikipedia.org/wiki/Prime_(symbol)#Representations
+		return string
+			.replace(/&lsquo;/g, "‘") // Single opening quote mark
+			.replace(/&rsquo;/g, "’") // Single closing quote mark & Apostrophe
+			.replace(/&ldquo;/g, "“") // Double opening quote mark
+			.replace(/&rdquo;/g, "’") // Double closing quote mark
+			.replace(/&prime;/g, "′") // Single prime
+			.replace(/&Prime;/g, "″") // Double prime
+			.replace(/&Prime;/g, "″") // Double prime
+			.replace(/U+2034/g, "‴")  // Triple prime
+			.replace(/U+2034/g, "‴")  // Triple prime
+			.replace(/U+2057/g, "⁗")  // Quadruple prime
+			.replace(/U+02B9/g, "ʹ")  // Modifier letter prime
+			.replace(/U+2057/g, "ʺ")  // Modifier letter double prime
+		;
 	};
 
 	this.getRemoteLastUpdate = function (gist) {
@@ -73,7 +189,7 @@ STsync = function () {
 		
 		return gist.files[self.lastUpdateFile].content;
 	};
-	
+
 	this.getLocalLastUpdate = function () {
 		console.log('getLocalLastUpdate');
 		var self = this;
@@ -88,22 +204,36 @@ STsync = function () {
 		console.log('updateLocalLastUpdate');
 		var self = this;
 
-		var lastUpdateNew = _.max(
-			_.compact(
-				_.map(
-					fs.readdirSync(self.settingsFolder),
-					function (file, index, list) {
-						var mtime, mtime_unix;
-						if (file != self.lastUpdateFile) {
-							mtime = fs.statSync(self.settingsFolder+file).mtime;
-							mtime_unix = moment(mtime).unix();
+		var filesMtime = _.compact(
+			_.map(
+				fs.readdirSync(self.settingsFolder),
+				function (file, index, list) {
+					var mtime, mtime_unix;
+					if (file != self.lastUpdateFile) {
+						mtime = fs.statSync(self.settingsFolder+file).mtime;
+						mtime_unix = moment(mtime).unix();
 
-							return mtime_unix;
-						}
+						return mtime_unix;
 					}
-				)
+				}
 			)
 		);
+
+		var folderMtime = moment(
+			fs.statSync(self.settingsFolder).mtime
+		).unix();
+
+		var mtimes = _.union(filesMtime, folderMtime);
+
+		var lastUpdateNew = _.max(mtimes);
+
+
+		// console.log('\tfilesMtime', filesMtime);
+		// console.log('\tfolderMtime', folderMtime);
+		// console.log('\tmtimes', mtimes);
+		// console.log('\tlastUpdateNew', lastUpdateNew);
+
+
 
 
 		/*
@@ -144,6 +274,13 @@ STsync = function () {
 		console.log('runSync');
 		var self = this;
 
+
+		/*
+		if (!self.syncIsGoing) {
+			self.doSync();
+		}
+		*/
+
 		setInterval(function () {
 			if (!self.syncIsGoing) {
 				self.doSync();
@@ -152,7 +289,7 @@ STsync = function () {
 	};
 
 	this.doSync = function () {
-		console.log('==================');
+		console.log('\n\t==================');
 		console.log('doSync');
 		var self = this;
 		
@@ -167,12 +304,19 @@ STsync = function () {
 
 				if (localUpdate != remoteUpdate) {
 					console.log('sync required');
+					console.log('delta: ', localUpdate - remoteUpdate);
 
 					if (localUpdate > remoteUpdate) {
 						console.log('REMOTE required sync');
+
+						self.updateRemote(res, function (err, res) {
+							console.log('remote update successfull');
+						});
 					} else {
 						console.log('LOCAL required sync');
 					}
+				} else {
+					console.log('All is already synced, congrats');
 				}
 
 				self.syncIsGoing = false;
@@ -209,7 +353,7 @@ STsync = function () {
 
 				console.log('not valid gist id');
 				createGist(function (err, res) {
-
+ 
 					self.options('gistId', res.id);
 
 					cb();
@@ -268,11 +412,7 @@ STsync = function () {
 	this.isValidSettings = function (gist) {
 		console.log('isValidSettings');
 		var self = this;
-		var gistFiles = _.map(gist.files, function(value, key) {
-			// console.log(key);
-			// console.log(value);
-			return key;
-		});
+		var gistFiles = this.getGistFilesList(gist);
 		var required = self.getOptions().requiredFiles;
 
 		// console.log(gistFiles);

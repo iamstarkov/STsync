@@ -6,6 +6,7 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Changelog: ##
 
+* 0.0.5 *(16 jan 2012)* — Update remote functionality added
 * 0.0.4 *(15 jan 2012)* — Local and remote copy added
 * 0.0.3 *(15 jan 2012)* — Synchronization step added
 * 0.0.2 *(15 jan 2012)* — Initializing finished
@@ -13,8 +14,7 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Roadmap ##
 
-* 0.0.5 — Update local functionality
-* 0.0.6 — Update remote functionality
+* 0.0.6 — Update local functionality
 * 0.0.7 — Synchronization worked
 * 0.0.8 — Refactoring
 * 0.0.9 — Documentation writed and compiled
