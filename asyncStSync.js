@@ -22,27 +22,45 @@ STsync = function () {
 	});
 
 
-	this.updateLocal = function () {
+	this.updateLocal = function (gist, cb) {
 		console.log('updateLocal');
 		var self = this;
 
+		var remoteFilesList = self.getGistFilesList(gist);
+		var localFilesList = self.getLocalFilesList();
+
+		// files from localFilesList that are not present in the remoteFilesList
+		var deletingFilesList = _.difference(localFilesList, remoteFilesList);
 		
-		// body...
+		
+		_.each(deletingFilesList, function (element, index, list) {
+			fs.unlinkSync('./'+self.settingsFolder+'/'+element);
+		});
+		
+		_.each(remoteFilesList, function (element, index, list) {
+			fs.writeFileSync(
+				'./'+self.settingsFolder+'/'+element,
+				gist.files[element].content,
+				'utf-8'
+			)
+		});
+
+		cb();
 	};
 
 	this.updateRemote = function (gist, cb) {
 		console.log('updateRemote');
 		var self = this;
 
-		var remoteFiles = self.getGistFilesList(gist);
-		var localFiles = self.getLocalFilesList();
+		var remoteFilesList = self.getGistFilesList(gist);
+		var localFilesList = self.getLocalFilesList();
 
-		var deletingFilesList = _.difference(remoteFiles, localFiles);
+		var deletingFilesList = _.difference(remoteFilesList, localFilesList);
 
-		console.log('number of remoteFiles count\n\t', remoteFiles.length);
-		console.log('number of localFiles\n\t', localFiles.length);
+		console.log('number of remoteFilesList count\n\t', remoteFilesList.length);
+		console.log('number of localFilesList\n\t', localFilesList.length);
 		console.log('number of filesToDelete\n\t', deletingFilesList.length);
-		console.log('number of filesToAdd\n\t', _.difference(localFiles, remoteFiles).length);
+		console.log('number of filesToAdd\n\t', _.difference(localFilesList, remoteFilesList).length);
 
 		var existingFiles = self.getLocalFiles();
 		var deletingFiles = self.getDeletingRemoteFiles(deletingFilesList);
@@ -68,7 +86,7 @@ STsync = function () {
 			// "files": existingFiles
 		};
 		
-		console.log('MSG\n', msg);
+		// console.log('MSG\n', msg);
 
 		github.gists.edit(
 			msg,
@@ -275,17 +293,17 @@ STsync = function () {
 		var self = this;
 
 
-		/*
 		if (!self.syncIsGoing) {
 			self.doSync();
 		}
 
-		*/
+		/*
 		setInterval(function () {
 			if (!self.syncIsGoing) {
 				self.doSync();
 			}
 		}, ~~self.options('updateFrequency') );
+		*/
 	};
 
 	this.doSync = function () {
@@ -317,7 +335,7 @@ STsync = function () {
 						});
 					} else {
 						console.log('LOCAL required sync');
-						self.updateRemote(res, function (err, res) {
+						self.updateLocal(res, function (err, res) {
 							console.log('local update successfull');
 							
 							console.log('End of do sync. Fuck yeah!\n\n');
