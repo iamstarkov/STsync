@@ -16,11 +16,17 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 * 0.0.6 — Update local functionality
 * 0.0.7 — Synchronization worked
-* 0.0.8 — Refactoring
-* 0.0.9 — Documentation writed and compiled
-* 0.0.10 — Tests writed
-* 0.0.11 — Tests successfully passing 
-* 0.0.12 — Created OAUTH authorization via web interface
+* 0.0.8 — Refactoring start
+* 0.0.9 — Refactoring: added normal logger ([winston][2]
+* 0.0.10 — Refactoring: polimorhism for CopyLocal and CopyRemote
+* 0.0.11 — Refactoring: chaining
+* 0.0.12 — Refactoring end
+* 0.0.13 — Documentation writed and compiled
+* 0.0.14 — Tests writed
+* 0.0.15 — Tests successfully passing
+* 0.0.16 — Created OAUTH authorization via web interface
+* 0.1.0 — Created python wrapper sketch…
+* 0.1.1 — Added ability for extension (other interfaces for CopyRemote, CopyLocal)
 * 0.0.N — Created python sketch and other steps, which are not known yet…
 
 ## Requirements ##
@@ -29,7 +35,9 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Usage ##
     
+    // syncing `./settings/` folder
     node asyncStSync.js login password
+
 
 Where:
 
@@ -44,3 +52,4 @@ Where:
 
 
 [1]: http://sublimetext.userecho.com/topic/111402-syncing-settings-files-and-plugins-list-with-gistgithubcom/ 'Syncing settings files and plugins list with gist.github.com'
+[2]: https://github.com/flatiron/winston "multi-transport async logging library for node.js"
