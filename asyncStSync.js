@@ -50,22 +50,22 @@ STsync = function () {
 
 		// console.log('existingFiles\n\t', existingFiles);
 		// console.log('deletingFiles\n\t', deletingFiles);
-		/*
+		
 		
 		var files = existingFiles;
 		if (deletingFiles.length !== 0) {
 			files = _.extend(files, deletingFiles);
 		}
 
-		*/
+		
 
 		// console.log('files\n\t', files);
 		var msg = {
 			"id": gist.id,
 			"description": gist.description,
-			// "files": files
+			"files": files
 			// "files": deletingFiles
-			"files": existingFiles
+			// "files": existingFiles
 		};
 		
 		console.log('MSG\n', msg);
@@ -79,7 +79,7 @@ STsync = function () {
 				console.log('updateRemote callback');
 				cb(err, res);
 			}
-		);
+			);
 
 	};
 
@@ -279,8 +279,8 @@ STsync = function () {
 		if (!self.syncIsGoing) {
 			self.doSync();
 		}
-		*/
 
+		*/
 		setInterval(function () {
 			if (!self.syncIsGoing) {
 				self.doSync();
@@ -311,15 +311,25 @@ STsync = function () {
 
 						self.updateRemote(res, function (err, res) {
 							console.log('remote update successfull');
+							
+							console.log('End of do sync. Fuck yeah!\n\n');
+							self.syncIsGoing = false;
 						});
 					} else {
 						console.log('LOCAL required sync');
+						self.updateRemote(res, function (err, res) {
+							console.log('local update successfull');
+							
+							console.log('End of do sync. Fuck yeah!\n\n');
+							self.syncIsGoing = false;
+						});
 					}
 				} else {
 					console.log('All is already synced, congrats');
+					console.log('End of do sync. Fuck yeah!\n\n');
+					self.syncIsGoing = false;
 				}
 
-				self.syncIsGoing = false;
 			}
 		});
 	};
