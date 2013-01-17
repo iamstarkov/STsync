@@ -7,6 +7,8 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Changelog: ##
 
+* 0.0.8 *(17 jan 2012)* — Synchronization worked
+* 0.0.7 *(16 jan 2012)* — Synchronization demo added
 * 0.0.6 *(16 jan 2012)* — Update local functionality
 * 0.0.5 *(16 jan 2012)* — Update remote functionality added
 * 0.0.4 *(15 jan 2012)* — Local and remote copy added
@@ -17,8 +19,6 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Roadmap ##
 
-* 0.0.7 — Proof of synchronisatoin script
-* 0.0.8 — Synchronization worked
 * 0.0.9 — Refactoring start
 * 0.0.10 — Refactoring: added normal logger ([winston][2]
 * 0.0.11 — Refactoring: polimorhism for CopyLocal and CopyRemote
@@ -41,18 +41,44 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 ## Usage ##
     
     // syncing `./settings/` folder
-    node asyncStSync.js login password
-
+    node app.js username password folder
 
 Where:
 
-* login — your github login
+* username — your github username
 * password — your github password
 
 
+## Demo ##
 
+    git clone git://github.com/matmuchrapna/STsync.git
+    cd STsync/
+    npm install github underscore moment
+    // run into two different terminals
+    node app.js username password ./demo/LocalCopy1/
+    // second one after the first script 'doSync' show
+    node app.js username password ./demo/LocalCopy2/
 
+    // for resetting local copies
+    node demo/reset.js
 
+Demo imitating situation, in which you have two opened text editors on two different machine: **localCopy1** and **localCopy2**.  
+**LocalCopy1** initially has default ST2 configuration (with STsync cofiguration files needed for synchronization).  
+**LocalCopy2** initially empty.
+
+Firstly run **localCopy1**, it will create gist with it’s contents in your gists archive, and then it will run the permanent synchronization.  
+After Stabilizing first sync, run sync in **localCopy2**, it will find valid copy of configuration in gists and will use it, the it will run the permanent synchronization.
+
+Now **LocalCopy1** and **LocalCopy2** is linked with each other. Try to add, edit or remove (exceptions(!)) files. Changes would be applied in **two way** smoothly.
+
+*Remove exceptions* (Required files):
+
+* Default (Linux).sublime-keymap
+* Default (OSX).sublime-keymap
+* Default (Windows).sublime-keymap
+* Preferences.sublime-settings
+* stsync.sublime-settings
+* stsync.last-sync
 
 
 
