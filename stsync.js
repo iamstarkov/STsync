@@ -4,9 +4,19 @@ var fs = require('fs'),
 	GitHubApi = require('github'),
 	github = new GitHubApi( {version: '3.0.0'} );
 
+// Utilities
+function unixSec2mtime (momentUnix) {
+	var format = "ddd, DD MMM YYYY HH:mm:ss [GMT]";
+	return moment.utc(momentUnix*1000).format(format);
+}
+
+function mtime2unixSec (mtime) {
+	return moment(mtime).unix();
+}
+
 STsync = function (username, token, folder) {
 	
-	this.lastUpdateFile = 'stsync.last-sync';
+	this.lastUpdateFile = 'stsync.last-update';
 	this.syncIsGoing = false;
 	
 	this.username = username;
@@ -19,6 +29,8 @@ STsync = function (username, token, folder) {
 		"type": "oauth",
 		"token": this.token
 	});
+	/*
+	*/
 
 	this.formatTime = function (time) {
 		console.log('formatTime');
@@ -29,26 +41,6 @@ STsync = function (username, token, folder) {
 		return formatted;
 	};
 	
-	this.updateMtime = function (path, mtime) {
-		console.log('updateMtime');
-		var self = this;
-		var atime = fs.statSync(path).atime;
-		
-		// console.log(atime);
-
-		atime = self.formatTime(atime);
-		mtime = self.formatTime(mtime*1000);
-
-
-		// console.log(atime+'\n', mtime);
-		atime = moment(atime).unix();
-		mtime = moment(mtime).unix();
-
-		// console.log(atime+'\n', mtime);
-
-
-		fs.utimesSync(path,	atime, mtime);
-	};
 
 	this.updateLocal = function (gist, cb) {
 		console.log('updateLocal');
@@ -67,7 +59,7 @@ STsync = function (username, token, folder) {
 		
 
 		
-		var mtime = gist.files[self.lastUpdateFile].content;
+		var lastUpdSec = gist.files[self.lastUpdateFile].content;
 		_.each(remoteFilesList, function (element, index, list) {
 
 			var filePath = self.settingsFolder+element;
@@ -76,11 +68,17 @@ STsync = function (username, token, folder) {
 				gist.files[element].content,
 				'utf-8'
 			);
-			self.updateMtime(filePath, mtime);
+			
+			var atime = fs.statSync(filePath).atime;
+
+			// self.updateMtime(filePath, atime mtime);
+			
+			fs.utimesSync(filePath, atime, unixSec2mtime(lastUpdSec));
 			
 		});
 
-		self.updateMtime(self.settingsFolder, mtime);
+		var atime = fs.statSync(self.settingsFolder).atime;
+		self.updateMtime(self.settingsFolder, atime, unixSec2mtime(lastUpdSec));
 
 		cb();
 	};
@@ -249,11 +247,13 @@ STsync = function (username, token, folder) {
 	this.getLocalLastUpdate = function () {
 		console.log('getLocalLastUpdate');
 		var self = this;
-
-		return fs.readFileSync(
-			self.settingsFolder+self.lastUpdateFile,
-			'utf-8'
-		);
+		var file = self.settingsFolder+self.lastUpdateFile;
+		
+		if (fs.existsSync(file)) {
+			return fs.readFileSync(file, 'utf-8');
+		} else {
+			return 0;
+		}
 	};
 	
 	this.updateLocalLastUpdate = function () {
@@ -267,21 +267,26 @@ STsync = function (username, token, folder) {
 					var mtime, mtime_unix;
 					if (file != self.lastUpdateFile) {
 						mtime = fs.statSync(self.settingsFolder+file).mtime;
-						mtime_unix = moment(mtime).unix();
-
-						return mtime_unix;
+						return mtime2unixSec(mtime);
 					}
 				}
 			)
 		);
+		
+		// console.log('filesMtime', filesMtime.length, filesMtime);
 
-		var folderMtime = moment(
-			fs.statSync(self.settingsFolder).mtime
-		).unix();
+		var folderMtime = mtime2unixSec(	fs.statSync(self.settingsFolder).mtime);
 
-		var mtimes = _.union(filesMtime, folderMtime);
+		// console.log('folderMtime', folderMtime);
+
+		filesMtime.push(folderMtime);
+		var mtimes = filesMtime;
+
+		// console.log('mtimes', mtimes.length, mtimes);
+
 
 		var lastUpdateNew = _.max(mtimes);
+		// console.log('lastUpdateNew', lastUpdateNew);
 
 
 		// console.log('\tfilesMtime', filesMtime);
@@ -301,14 +306,14 @@ STsync = function (username, token, folder) {
 		if (
 			parseInt(lastUpdateNew, 10) !== parseInt(self.getLocalLastUpdate(), 10)
 		) {
-			// console.log('Local files was updated');
+			console.log('Local files was updated and need to be synced');
 			fs.writeFileSync(
 				self.settingsFolder+self.lastUpdateFile,
 				lastUpdateNew,
 				'utf-8'
 			);
 		} else {
-			// console.log('Nothing happens here');
+			console.log('Nothing happens here');
 		}
 		/*
 		 */
@@ -571,8 +576,35 @@ STsync = function (username, token, folder) {
 
 
 
-	this.init();
+	/*
+	var self = this;
+	var file = './stsync.js';
+
+	var mtime = fs.statSync(file).mtime;
+	var atime = fs.statSync(file).mtime;
+
+	var momentUnixOld = mtime2momentUnix(mtime);
+
+	fs.utimesSync(file, atime, mtime);
+
+	var momentUnixNew = mtime2momentUnix( fs.statSync(file).mtime );
+
+	console.log(momentUnixOld);
+	console.log(momentUnixNew);
+
 	
+	setInterval(
+		function () {
+			console.log('\n\n');
+			console.log('==========');
+			self.updateLocalLastUpdate();
+		},
+		3000
+	);
+	self.updateLocalLastUpdate();
+	 */
+	
+	this.init();
 };
 
 module.exports = STsync;

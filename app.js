@@ -5,6 +5,8 @@ var sync     = require('./stsync.js'),
 // console.log(process.argv);
 
 // console.log(folder);
+// sync('matmuchrapna', 'asd', folder);
+
 
 // passport.js
 var express = require('express'),
@@ -35,13 +37,13 @@ passport.use(new GitHubStrategy(
 	},
 	function(accessToken, refreshToken, profile, done) {
 
-		/*
-		console.log('==========================');
+		
+		// console.log('==========================');
 		// console.log(accessToken, folder);
 		// console.log(profile);
 		// profile = eval('(' + profile + ')');
-		console.log('==========================');
-		*/
+		// console.log('==========================');
+		
 		
 		var username = profile._json.login;
 		sync(username, accessToken, folder);
