@@ -215,8 +215,6 @@ STsync = function (username, password, folder) {
 			.replace(/’/g, "&rdquo;") // Double closing quote mark
 			.replace(/′/g, "&prime;") // Single prime
 			.replace(/″/g, "&Prime;") // Double prime
-			.replace(/″/g, "&Prime;") // Double prime
-			.replace(/‴/g, "U+2034")  // Triple prime
 			.replace(/‴/g, "U+2034")  // Triple prime
 			.replace(/⁗/g, "U+2057")  // Quadruple prime
 			.replace(/ʹ/g, "U+02B9")  // Modifier letter prime
@@ -235,8 +233,6 @@ STsync = function (username, password, folder) {
 			.replace(/&rdquo;/g, "’") // Double closing quote mark
 			.replace(/&prime;/g, "′") // Single prime
 			.replace(/&Prime;/g, "″") // Double prime
-			.replace(/&Prime;/g, "″") // Double prime
-			.replace(/U+2034/g, "‴")  // Triple prime
 			.replace(/U+2034/g, "‴")  // Triple prime
 			.replace(/U+2057/g, "⁗")  // Quadruple prime
 			.replace(/U+02B9/g, "ʹ")  // Modifier letter prime
@@ -575,34 +571,9 @@ STsync = function (username, password, folder) {
 	};
 
 
-	/*
-	var self = this
-	
-	// self.updateLocalLastUpdate();
-	
-	setInterval(function () {
-		console.log('----')
-		self.updateLocalLastUpdate();
-		console.log(
-			'\t' + self.getLocalLastUpdate()
-		);
-	}, 1000);
-	 */
-	/*
-	 */
 
-	/*
-	this.createGist(function (err, res) {
-		console.log(res.id);
-	});
-	*/
-
-	//
 	this.init();
-	//
-	//
 	
-	// this.updateMtime('./OAUTH example.js', this.getLocalLastUpdate()); 
 };
 
 module.exports = STsync;
