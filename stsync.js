@@ -4,21 +4,20 @@ var fs = require('fs'),
 	GitHubApi = require('github'),
 	github = new GitHubApi( {version: '3.0.0'} );
 
-STsync = function (username, password, folder) {
+STsync = function (username, token, folder) {
 	
 	this.lastUpdateFile = 'stsync.last-sync';
 	this.syncIsGoing = false;
 	
 	this.username = username;
-	this.password = password;
+	this.token = token;
 	this.settingsFolder = folder;
 
 	this.settingsFile = this.settingsFolder+'stsync.sublime-settings';
 
 	github.authenticate({
-		type: 'basic',
-		username: this.username,
-		password: this.password
+		"type": "oauth",
+		"token": this.token
 	});
 
 	this.formatTime = function (time) {

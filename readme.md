@@ -7,8 +7,9 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Changelog: ##
 
+* 0.0.9 *(18 jan 2012)* — Created OAUTH authorization via web interface
 * 0.0.8 *(17 jan 2012)* — Synchronization worked
-* 0.0.7 *(16 jan 2012)* — Synchronization demo added
+* 0.0.7 *(16 jan 2012)* — Synchronization demo added (deprecated, because different servers cannot exists at one port, which is one of the required case for using oauth)
 * 0.0.6 *(16 jan 2012)* — Update local functionality
 * 0.0.5 *(16 jan 2012)* — Update remote functionality added
 * 0.0.4 *(15 jan 2012)* — Local and remote copy added
@@ -19,35 +20,38 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Roadmap ##
 
-* 0.0.9 — Refactoring start
-* 0.0.10 — Refactoring: added normal logger ([winston][2]
-* 0.0.11 — Refactoring: polimorhism for CopyLocal and CopyRemote
-* 0.0.12 — Refactoring: chaining
-* 0.0.13 — Refactoring end
-* 0.0.14 — Documentation writed and compiled
-* 0.0.15 — Tests writed
-* 0.0.16 — Tests successfully passing
-* 0.0.17 — Created OAUTH authorization via web interface
+* 0.0.10 — Refactoring start
+* 0.0.11 — Refactoring: added normal logger ([winston][2]
+* 0.0.12 — Refactoring: polimorhism for CopyLocal and CopyRemote
+* 0.0.13 — Refactoring: chaining
+* 0.0.14 — Refactoring end
+* 0.0.15 — Documentation writed and compiled
+* 0.0.16 — Tests writed
+* 0.0.17 — Tests successfully passing
 * 0.1.0 — Created python wrapper sketch…
 * 0.1.1 — Added ability for extension (other interfaces for CopyRemote, CopyLocal)
 * 0.0.N — Created python sketch and other steps, which are not known yet…
 
 
 ## Requirements ##
+    
+    // STsync required:
+    //     underscore
+    //     moment
+    //     github
+    // OAuth required:
+    //     express
+    //     passport
+    //     open
+    //     passport-github
 
-    npm install github underscore moment
+    npm install github underscore moment express passport open passport-github
 
 
 ## Usage ##
     
     // syncing `./settings/` folder
-    node app.js username password folder
-
-Where:
-
-* username — your github username
-* password — your github password
-
+    node app.js folder
 
 ## Demo ##
 
@@ -55,9 +59,9 @@ Where:
     cd STsync/
     npm install github underscore moment
     // run into two different terminals
-    node app.js username password ./demo/LocalCopy1/
+    node app.js ./demo/LocalCopy1/
     // second one after the first script 'doSync' show
-    node app.js username password ./demo/LocalCopy2/
+    node app.js ./demo/LocalCopy2/
 
     // for resetting local copies
     node demo/reset.js
