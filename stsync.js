@@ -1,46 +1,232 @@
+// STsync
 var fs = require('fs'),
 	_  = require('underscore'),
 	moment = require('moment');
+
 	GitHubApi = require('github'),
 	github = new GitHubApi( {version: '3.0.0'} );
 
-// Utilities
-function unixSec2mtime (momentUnix) {
-	var format = "ddd, DD MMM YYYY HH:mm:ss [GMT]";
-	return moment.utc(momentUnix*1000).format(format);
-}
+// Passport
+var express = require('express'),
+	passport = require('passport'),
+	util = require('util'),
+	forceOpen = require('open'),
+	GitHubStrategy = require('passport-github').Strategy;
 
-function mtime2unixSec (mtime) {
-	return moment(mtime).unix();
-}
+// Extend underscore with my helpful mini functions;
+_.mixin({
+	unixSec2mtime : function(unixSec) {
+		return moment.utc(unixSec*1000).format("ddd, DD MMM YYYY HH:mm:ss [GMT]");
+	},
+	mtime2unixSec : function(mtime) {
+		return moment(mtime).unix();
+	},
+	getJSON : function (JSONstring) {
+		return eval('(' + JSONstring + ')');
+	},
+	formatJSON : function (JSONstring) {
+		return JSONstring
+					.replace(/\{/g, "{\n")       // new line after ‘{’
+					.replace(/,/g, ",\n")        // new line after ‘,’
+					.replace(/\n"/g, "\n\t\"")   // one tab indentaion first-level options
+					.replace(/:/g, ": ")         // space after ‘:’
+					.replace(/\[/g, "\n\t[\n\t") // new line before array
+					.replace(/\]/g, "\n\t]")     // new line after array
+					.replace(/\}/g, "\n}")       // new line after ‘}’
+		;
+	},
+	readFile : function (file) {
+		return fs.readFileSync(file, 'utf-8');
+	},
+	writeFile : function (file, content) {
+		fs.writeFileSync(file, content, 'utf-8');
+	},
+	getAtime : function (file) {
+		return fs.statSync(file).atime;
+	},
+	getMtime : function (file) {
+		return fs.statSync(file).mtime;
+	},
+	updateMtime : function (file, mtime) {
+		fs.utimesSync(
+			file,
+			_.getAtime(file),
+			mtime
+		);
+	},
+	escapeQuotes : function (string) {
+		// https://en.wikipedia.org/wiki/Quotation_mark#Typing_quotation_marks_on_a_computer_keyboard
+		// https://en.wikipedia.org/wiki/Apostrophe#Entering_apostrophes
+		// https://en.wikipedia.org/wiki/Prime_(symbol)#Representations
+		return string
+			.replace(/‘/g, "&lsquo;") // Single opening quote mark
+			.replace(/’/g, "&rsquo;") // Single closing quote mark & Apostrophe
+			.replace(/“/g, "&ldquo;") // Double opening quote mark
+			.replace(/’/g, "&rdquo;") // Double closing quote mark
+			.replace(/′/g, "&prime;") // Single prime
+			.replace(/″/g, "&Prime;") // Double prime
+			.replace(/‴/g, "U+2034")  // Triple prime
+			.replace(/⁗/g, "U+2057")  // Quadruple prime
+			.replace(/ʹ/g, "U+02B9")  // Modifier letter prime
+			.replace(/ʺ/g, "U+2057")  // Modifier letter double prime
+		;
+	},
+	unescapeQuotes : function (string) {
+		// https://en.wikipedia.org/wiki/Quotation_mark#Typing_quotation_marks_on_a_computer_keyboard
+		// https://en.wikipedia.org/wiki/Apostrophe#Entering_apostrophes
+		// https://en.wikipedia.org/wiki/Prime_(symbol)#Representations
+		return string
+			.replace(/&lsquo;/g, "‘") // Single opening quote mark
+			.replace(/&rsquo;/g, "’") // Single closing quote mark & Apostrophe
+			.replace(/&ldquo;/g, "“") // Double opening quote mark
+			.replace(/&rdquo;/g, "’") // Double closing quote mark
+			.replace(/&prime;/g, "′") // Single prime
+			.replace(/&Prime;/g, "″") // Double prime
+			.replace(/U+2034/g, "‴")  // Triple prime
+			.replace(/U+2057/g, "⁗")  // Quadruple prime
+			.replace(/U+02B9/g, "ʹ")  // Modifier letter prime
+			.replace(/U+2057/g, "ʺ")  // Modifier letter double prime
+		;
+	},
+	isPositiveInteger : function (number) {
+		number = parseInt(number, 10);
+		return (_.isNumber(number) && !_.isNaN(number));
+	}
 
-STsync = function (username, token, folder) {
+});
+
+
+STsync = function () {
+
+	// internal settings
+	this.appId = '5f4f0546d36a62e59428';
+	this.appSecret = '90abc81d07fd055bb9a44fc018ef5b8bbe70c459';
+
+	this.host = 'localhost';
+	this.port = '2121';
 	
+	this.settingsFolder = './settings/';
 	this.lastUpdateFile = 'stsync.last-update';
-	this.syncIsGoing = false;
+	this.generalSettingsFile = './stsync.sublime-settings';
+	this.userSettingsFile = this.settingsFolder + this.generalSettingsFile;
 	
-	this.username = username;
-	this.token = token;
-	this.settingsFolder = folder;
 
-	this.settingsFile = this.settingsFolder+'stsync.sublime-settings';
+	this.syncIsGoing = false;
 
-	github.authenticate({
-		"type": "oauth",
-		"token": this.token
-	});
-	/*
-	*/
-
-	this.formatTime = function (time) {
-		console.log('formatTime');
+	//
+	// OAUTH
+	//
+	
+	this.auth = function (cb) {
+		console.log('auth');
 		var self = this;
 
-		var format = "ddd, DD MMM YYYY HH:mm:ss [GMT]";
-		var formatted = moment.utc(time).format(format);
-		return formatted;
+		passport.serializeUser(function(user, done) {
+			done(null, user);
+		});
+
+		passport.deserializeUser(function(obj, done) {
+			done(null, obj);
+		});
+
+
+		passport.use(new GitHubStrategy(
+			{
+				clientID: self.appId,
+				clientSecret: self.appSecret,
+				callbackURL: "http://"+self.host+":"+self.port+"/auth/github/callback",
+				scope: ["gist"]
+			},
+			function(accessToken, refreshToken, profile, done) {
+
+				
+				// console.log('==========================');
+				// console.log(accessToken, folder);
+				// console.log(profile);
+				// profile = eval('(' + profile + ')');
+				// console.log('==========================');
+				
+				
+				var username = profile._json.login;
+				cb(username, accessToken);
+				
+				process.nextTick(function () {
+					return done(null, profile);
+				});
+			}
+		));
+
+
+
+
+		var app = express();
+
+		// configure Express
+		app.configure(function() {
+			app.set('views', __dirname + '/views');
+			app.set('view engine', 'ejs');
+			app.use(express.logger());
+			app.use(express.cookieParser());
+			app.use(express.bodyParser());
+			app.use(express.methodOverride());
+			app.use(express.session({ secret: 'keyboard cat' }));
+			// Initialize Passport!  Also use passport.session() middleware, to support
+			// persistent login sessions (recommended).
+			app.use(passport.initialize());
+			app.use(passport.session());
+			app.use(app.router);
+			app.use(express.static(__dirname + '/public'));
+		});
+
+
+		app.get('/', function(req, res){
+			res.render('index', { user: req.user });
+		});
+
+		app.get('/account', ensureAuthenticated, function(req, res){
+			res.render('account', { user: req.user });
+		});
+
+		app.get('/login', function(req, res){
+			res.render('login', { user: req.user });
+		});
+
+		app.get(
+			'/auth/github',
+			passport.authenticate('github'),
+			function(req, res) {
+				console.log(res);
+			}
+		);
+
+		app.get(
+			'/auth/github/callback',
+			passport.authenticate('github', { failureRedirect: '/login' }),
+			function(req, res) {
+				res.redirect('/');
+			}
+		);
+
+		app.get('/logout', function(req, res){
+			req.logout();
+			res.redirect('/');
+		});
+
+		app.listen(self.port);
+
+		forceOpen('http://'+self.host+':'+self.port+'/login');
+
+		function ensureAuthenticated(req, res, next) {
+			if (req.isAuthenticated()) { return next(); }
+			res.redirect('/login');
+		}
 	};
-	
+
+	//===========================================//
+
+	//
+	// LOCAL
+	//
 
 	this.updateLocal = function (gist, cb) {
 		console.log('updateLocal');
@@ -63,25 +249,126 @@ STsync = function (username, token, folder) {
 		_.each(remoteFilesList, function (element, index, list) {
 
 			var filePath = self.settingsFolder+element;
-			fs.writeFileSync(
-				filePath,
-				gist.files[element].content,
-				'utf-8'
-			);
+			_.writeFile(filePath, gist.files[element].content);
 			
-			var atime = fs.statSync(filePath).atime;
-
-			// self.updateMtime(filePath, atime mtime);
-			
-			fs.utimesSync(filePath, atime, unixSec2mtime(lastUpdSec));
+			_.updateMtime(filePath, _.unixSec2mtime(lastUpdSec));
 			
 		});
 
-		var atime = fs.statSync(self.settingsFolder).atime;
-		self.updateMtime(self.settingsFolder, atime, unixSec2mtime(lastUpdSec));
+		_.updateMtime(self.settingsFolder, _.unixSec2mtime(lastUpdSec));
 
 		cb();
 	};
+
+	this.getLocalLastUpdate = function () {
+		console.log('getLocalLastUpdate');
+		var self = this;
+		var file = self.settingsFolder+self.lastUpdateFile;
+		
+		if (fs.existsSync(file)) {
+			return _.readFile(file);
+		} else {
+			return 0;
+		}
+	};
+
+	this.getLocalFilesList = function () {
+		console.log('getLocalFilesList');
+		var self = this;
+		return fs.readdirSync(self.settingsFolder);
+	};
+
+	this.getLocalFiles = function () {
+		console.log('getLocalFiles');
+		var self = this;
+
+		var files = {};
+
+		_.each(
+			self.getLocalFilesList(),
+			function (element, index, list) {
+				var fileContent = _.readFile(self.settingsFolder+element);
+
+				// not to sync empty files, ’cause wtf and they brokes JSON
+				if (fileContent !== '') {
+					files[element] = {
+						"content": _.escapeQuotes(fileContent)
+					};
+				}
+			}
+		);
+
+		return files;
+	};
+
+	this.updateLocalLastUpdate = function () {
+		console.log('updateLocalLastUpdate');
+		var self = this;
+
+		var filesMtime = _.compact(
+			_.map(
+				fs.readdirSync(self.settingsFolder),
+				function (file, index, list) {
+					var mtime, mtime_unix;
+					if (file != self.lastUpdateFile) {
+						mtime = fs.statSync(self.settingsFolder+file).mtime;
+						return _.mtime2unixSec(mtime);
+					}
+				}
+			)
+		);
+		
+		// console.log('filesMtime', filesMtime.length, filesMtime);
+
+		var folderMtime = _.mtime2unixSec(
+			fs.statSync(self.settingsFolder).mtime
+		);
+
+		// console.log('folderMtime', folderMtime);
+
+		filesMtime.push(folderMtime);
+
+		var mtimes = filesMtime;
+
+		// console.log('mtimes', mtimes.length, mtimes);
+
+
+		var lastUpdateNew = _.max(mtimes);
+		// console.log('lastUpdateNew', lastUpdateNew);
+
+
+		// console.log('\tfilesMtime', filesMtime);
+		// console.log('\tfolderMtime', folderMtime);
+		// console.log('\tmtimes', mtimes);
+		// console.log('\tlastUpdateNew', lastUpdateNew);
+
+
+
+
+		/*
+		console.log('lastUpdateNew\n\t', lastUpdateNew);
+		console.log('getLocalLastUpdate\n\t', self.getLocalLastUpdate() );
+		 */
+
+
+		if (
+			parseInt(lastUpdateNew, 10) !== parseInt(self.getLocalLastUpdate(), 10)
+		) {
+			console.log('Local files was updated and need to be synced');
+			_.writeFile(
+				self.settingsFolder+self.lastUpdateFile,
+				lastUpdateNew
+			);
+		} else {
+			console.log('Nothing happens here');
+		}
+	};
+
+	//===========================================//
+
+	//
+	// REMOTE
+	//
 
 	this.updateRemote = function (gist, cb) {
 		console.log('updateRemote');
@@ -110,8 +397,6 @@ STsync = function (username, token, folder) {
 			files = _.extend(files, deletingFiles);
 		}
 
-		
-
 		// console.log('files\n\t', files);
 		var msg = {
 			"id": gist.id,
@@ -132,7 +417,13 @@ STsync = function (username, token, folder) {
 				cb(err, res);
 			}
 		);
+	};
 
+	this.getRemoteLastUpdate = function (gist) {
+		console.log('getRemoteLastUpdate');
+		var self = this;
+		
+		return gist.files[self.lastUpdateFile].content;
 	};
 
 	this.getGistFilesList = function (gist) {
@@ -142,12 +433,25 @@ STsync = function (username, token, folder) {
 			return key;
 		});
 	};
-	
-	this.getLocalFilesList = function () {
-		console.log('getLocalFilesList');
-		var self = this;
-		return fs.readdirSync(self.settingsFolder);
+
+	this.getDeletingRemoteFiles = function (filesLists) {
+		console.log('getDeletingRemoteFiles');
+		
+
+		var files = {};
+
+		_.each(filesLists, function (element, index, list) {
+			files[element] = null;
+		});
+
+		return files;
 	};
+
+	//===========================================//
+	
+	//
+	// GITHUB START
+	//
 
 	this.getGist = function (cb) {
 		console.log('getGist');
@@ -165,167 +469,77 @@ STsync = function (username, token, folder) {
 		);
 	};
 
-	this.getDeletingRemoteFiles = function (filesLists) {
-		console.log('getDeletingRemoteFiles');
-		
-
-		var files = {};
-
-		_.each(filesLists, function (element, index, list) {
-			files[element] = null;
-		});
-
-		return files;
-	};
-
-	this.getLocalFiles = function () {
-		console.log('getLocalFiles');
+	this.getAllGists = function (pageNumber, perPage, accumulator, cb) {
+		console.log('getAllGists');
 		var self = this;
 
-		var files = {};
+		github.gists.getFromUser(
+			{
+				'user': self.username,
+				'page': pageNumber,
+				'per_page': perPage
+			},
+			function (err, res) {
+				console.log('getAllGists done ', pageNumber, ' page');
+				accumulator = _.union(res, accumulator);
+				
+				if (_.isEqual( res.length, perPage)) {
+					// not last page
+					getAllGists(++pageNumber, perPage, accumulator, cb);
 
-		_.each(
-			self.getLocalFilesList(),
-			function (element, index, list) {
-				var fileContent = fs.readFileSync(self.settingsFolder+element, 'utf-8');
-
-				// not to sync empty files, ’cause wtf and they brokes JSON
-				if (fileContent !== '') {
-					files[element] = {
-						"content": self.escapeQuotes(fileContent)
-					};
+				} else {
+					// last page, return all accumulated gists
+					console.log('getAllGists ended');
+					cb(err, accumulator);
 				}
+
 			}
 		);
-
-		return files;
 	};
 
-	this.escapeQuotes = function(string) {
-		// https://en.wikipedia.org/wiki/Quotation_mark#Typing_quotation_marks_on_a_computer_keyboard
-		// https://en.wikipedia.org/wiki/Apostrophe#Entering_apostrophes
-		// https://en.wikipedia.org/wiki/Prime_(symbol)#Representations
-		return string
-			.replace(/‘/g, "&lsquo;") // Single opening quote mark
-			.replace(/’/g, "&rsquo;") // Single closing quote mark & Apostrophe
-			.replace(/“/g, "&ldquo;") // Double opening quote mark
-			.replace(/’/g, "&rdquo;") // Double closing quote mark
-			.replace(/′/g, "&prime;") // Single prime
-			.replace(/″/g, "&Prime;") // Double prime
-			.replace(/‴/g, "U+2034")  // Triple prime
-			.replace(/⁗/g, "U+2057")  // Quadruple prime
-			.replace(/ʹ/g, "U+02B9")  // Modifier letter prime
-			.replace(/ʺ/g, "U+2057")  // Modifier letter double prime
-		;
-	};
-
-	this.unescapeQuotes = function(string) {
-		// https://en.wikipedia.org/wiki/Quotation_mark#Typing_quotation_marks_on_a_computer_keyboard
-		// https://en.wikipedia.org/wiki/Apostrophe#Entering_apostrophes
-		// https://en.wikipedia.org/wiki/Prime_(symbol)#Representations
-		return string
-			.replace(/&lsquo;/g, "‘") // Single opening quote mark
-			.replace(/&rsquo;/g, "’") // Single closing quote mark & Apostrophe
-			.replace(/&ldquo;/g, "“") // Double opening quote mark
-			.replace(/&rdquo;/g, "’") // Double closing quote mark
-			.replace(/&prime;/g, "′") // Single prime
-			.replace(/&Prime;/g, "″") // Double prime
-			.replace(/U+2034/g, "‴")  // Triple prime
-			.replace(/U+2057/g, "⁗")  // Quadruple prime
-			.replace(/U+02B9/g, "ʹ")  // Modifier letter prime
-			.replace(/U+2057/g, "ʺ")  // Modifier letter double prime
-		;
-	};
-
-	this.getRemoteLastUpdate = function (gist) {
-		console.log('getRemoteLastUpdate');
+	this.createGist = function (cb) {
+		console.log('createGist');
 		var self = this;
+		self.updateLocalLastUpdate();
+
+
+		var msg = {
+			"description": "optional desc: ",
+			"public": true,
+			'files': self.getLocalFiles()
+		};
 		
-		return gist.files[self.lastUpdateFile].content;
-	};
+		console.log(msg);
 
-	this.getLocalLastUpdate = function () {
-		console.log('getLocalLastUpdate');
-		var self = this;
-		var file = self.settingsFolder+self.lastUpdateFile;
-		
-		if (fs.existsSync(file)) {
-			return fs.readFileSync(file, 'utf-8');
-		} else {
-			return 0;
-		}
-	};
-	
-	this.updateLocalLastUpdate = function () {
-		console.log('updateLocalLastUpdate');
-		var self = this;
+		github.gists.create(
+			msg,
+			function(err, res) {
+				if (err) throw err;
 
-		var filesMtime = _.compact(
-			_.map(
-				fs.readdirSync(self.settingsFolder),
-				function (file, index, list) {
-					var mtime, mtime_unix;
-					if (file != self.lastUpdateFile) {
-						mtime = fs.statSync(self.settingsFolder+file).mtime;
-						return mtime2unixSec(mtime);
-					}
-				}
-			)
+				cb(err, res);
+			}
 		);
-		
-		// console.log('filesMtime', filesMtime.length, filesMtime);
-
-		var folderMtime = mtime2unixSec(	fs.statSync(self.settingsFolder).mtime);
-
-		// console.log('folderMtime', folderMtime);
-
-		filesMtime.push(folderMtime);
-		var mtimes = filesMtime;
-
-		// console.log('mtimes', mtimes.length, mtimes);
-
-
-		var lastUpdateNew = _.max(mtimes);
-		// console.log('lastUpdateNew', lastUpdateNew);
-
-
-		// console.log('\tfilesMtime', filesMtime);
-		// console.log('\tfolderMtime', folderMtime);
-		// console.log('\tmtimes', mtimes);
-		// console.log('\tlastUpdateNew', lastUpdateNew);
-
-
-
-
-		/*
-		console.log('lastUpdateNew\n\t', lastUpdateNew);
-		console.log('getLocalLastUpdate\n\t', self.getLocalLastUpdate() );
-		 */
-
-
-		if (
-			parseInt(lastUpdateNew, 10) !== parseInt(self.getLocalLastUpdate(), 10)
-		) {
-			console.log('Local files was updated and need to be synced');
-			fs.writeFileSync(
-				self.settingsFolder+self.lastUpdateFile,
-				lastUpdateNew,
-				'utf-8'
-			);
-		} else {
-			console.log('Nothing happens here');
-		}
-		/*
-		 */
-		// console.log(asd);
 	};
+
+	//===========================================//
 	
-	this.init = function () {
+	//
+	// APPLICATION START
+	// 
+	
+	this.init = function (username, token) {
 		console.log('init');
 		var self = this;
 
-		
-		if ( self.isValidGistId( self.options('gistId') ) ) {
+		this.username = username;
+		this.token = token;
+
+		github.authenticate({
+			"type": "oauth",
+			"token": this.token
+		});
+
+		if ( _.isPositiveInteger( self.options('gistId') ) ) {
 			self.runSync();
 		} else {
 			findGistId(self.runSync);
@@ -335,13 +549,6 @@ STsync = function (username, token, folder) {
 	this.runSync = function () {
 		console.log('runSync');
 		var self = this;
-
-
-		/*
-		if (!self.syncIsGoing) {
-			self.doSync();
-		}
-		*/
 
 		setInterval(function () {
 			if (!self.syncIsGoing) {
@@ -413,7 +620,7 @@ STsync = function (username, token, folder) {
 				}
 			);
 
-			if ((validGist) && self.isValidGistId(validGist.id)) {
+			if ((validGist) && _.isPositiveInteger(validGist.id)) {
 
 				console.log('valid gist id');
 
@@ -436,58 +643,6 @@ STsync = function (username, token, folder) {
 		});
 	};
 
-	this.getAllGists = function (pageNumber, perPage, accumulator, cb) {
-		console.log('getAllGists');
-		var self = this;
-
-		github.gists.getFromUser(
-			{
-				'user': self.username,
-				'page': pageNumber,
-				'per_page': perPage
-			},
-			function (err, res) {
-				console.log('getAllGists done ', pageNumber, ' page');
-				accumulator = _.union(res, accumulator);
-				
-				if (_.isEqual( res.length, perPage)) {
-					// not last page
-					getAllGists(++pageNumber, perPage, accumulator, cb);
-
-				} else {
-					// last page, return all accumulated gists
-					console.log('getAllGists ended');
-					cb(err, accumulator);
-				}
-
-			}
-		);
-	};
-
-	this.createGist = function (cb) {
-		console.log('createGist');
-		var self = this;
-		self.updateLocalLastUpdate();
-
-
-		var msg = {
-			"description": "optional desc: ",
-			"public": true,
-			'files': self.getLocalFiles()
-		};
-		
-		console.log(msg);
-
-		github.gists.create(
-			msg,
-			function(err, res) {
-				if (err) throw err;
-
-				cb(err, res);
-			}
-		);
-	};
-
 	this.isValidSettings = function (gist) {
 		console.log('isValidSettings');
 		var self = this;
@@ -503,15 +658,11 @@ STsync = function (username, token, folder) {
 		return _.isEqual(required, intersection);
 	};
 
-	this.isValidGistId = function (id) {
-		console.log('isValidGistId');
-		var self = this;
-
-		id = parseInt(id, 10);
-		// console.log(id);
-		// console.log(id);
-		return (_.isNumber(id) && !_.isNaN(id));
-	};
+	//===========================================//
+	
+	//
+	// OPTIONS START
+	//
 
 	this.options = function () {
 		console.log('options');
@@ -526,8 +677,7 @@ STsync = function (username, token, folder) {
 		}
 
 		switch (arguments.length) {
-			case 0:
-				return self.getOptions();
+			case 0: return self.getOptions();
 			case 1:
 				if (_.isString(first)) {
 					return self.getOptions()[first];
@@ -548,11 +698,17 @@ STsync = function (username, token, folder) {
 		console.log('getOptions');
 		var self = this;
 
-		var json =  fs.readFileSync(self.settingsFile, 'utf-8');
+		var general =  _.getJSON( _.readFile(self.generalSettingsFile) );
+		var user    = _.getJSON( _.readFile(self.userSettingsFile) );
+		
+		// console.log('general', general);
+		// console.log('user', user);
 
-		json = eval('(' + json + ')');
+		var options = _.extend(general, user);
 
-		return json;
+		// console.log('options', options);
+
+		return options;
 	};
 
 	this.setOptions = function (settings) {
@@ -561,50 +717,16 @@ STsync = function (username, token, folder) {
 		
 		settings = JSON.stringify(settings);
 
-		settings = settings
-			.replace(/\{/g, "{\n")
-			.replace(/,/g, ",\n")
-			.replace(/\n"/g, "\n\t\"")
-			.replace(/:/g, ": ")
-			.replace(/\[/g, "\n\t[\n\t")
-			.replace(/\]/g, "\n\t]")
-			.replace(/\}/g, "\n}")
-		;
+		// console.log('settings', settings);
 
-		fs.writeFileSync(this.settingsFile, settings, 'utf-8');
+		_.writeFile(
+			this.userSettingsFile,
+			_.formatJSON(settings)
+		);
 	};
 
 
-
-	/*
-	var self = this;
-	var file = './stsync.js';
-
-	var mtime = fs.statSync(file).mtime;
-	var atime = fs.statSync(file).mtime;
-
-	var momentUnixOld = mtime2momentUnix(mtime);
-
-	fs.utimesSync(file, atime, mtime);
-
-	var momentUnixNew = mtime2momentUnix( fs.statSync(file).mtime );
-
-	console.log(momentUnixOld);
-	console.log(momentUnixNew);
-
-	
-	setInterval(
-		function () {
-			console.log('\n\n');
-			console.log('==========');
-			self.updateLocalLastUpdate();
-		},
-		3000
-	);
-	self.updateLocalLastUpdate();
-	 */
-	
-	this.init();
+	return this;
 };
 
 module.exports = STsync;

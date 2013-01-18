@@ -1,6 +1,6 @@
 {
 	"updateFrequency": 1000,
-	"perPage": 100,
+	"perPage": 30,
 	"requiredFiles": 
 	[
 	"Default (Linux).sublime-keymap",
