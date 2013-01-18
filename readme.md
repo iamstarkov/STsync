@@ -44,8 +44,9 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
     //     passport
     //     open
     //     passport-github
+    //     ejs
 
-    npm install github underscore moment express passport open passport-github
+    npm install github underscore moment express passport open passport-github ejs
 
 
 ## Usage ##
