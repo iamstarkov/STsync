@@ -17,7 +17,9 @@ var express = require('express'),
 _.mixin({
 	unixSec2mtime : function(unixSec) {
 		// return moment.utc(unixSec*1000).format("ddd, DD MMM YYYY HH:mm:ss ZZ");
-		return moment.utc(unixSec*1000).format("ddd, DD MMM YYYY HH:mm:ss");
+		// return moment(unixSec*1000).format("ddd, DD MMM YYYY HH:mm:ss");
+		// return moment(unixSec*1000);
+		return moment(unixSec*1000)/1000;
 	},
 	mtime2unixSec : function(mtime) {
 		return moment(mtime).unix();

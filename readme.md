@@ -60,9 +60,9 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
     cd STsync/
     npm install github underscore moment
     // run into two different terminals
-    node app.js ./demo/LocalCopy1/
+    node app.js ./demo/LocalCopy1/ login password
     // second one after the first script 'doSync' show
-    node app.js ./demo/LocalCopy2/
+    node app.js ./demo/LocalCopy2/ login password
 
     // for resetting local copies
     node demo/reset.js
