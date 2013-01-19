@@ -1,0 +1,14 @@
+{
+	"updateFrequency": 1000,
+	"perPage": 30,
+	"requiredFiles": 
+	[
+	"Default (Linux).sublime-keymap",
+	"Default (OSX).sublime-keymap",
+	"Default (Windows).sublime-keymap",
+	"Preferences.sublime-settings",
+	"stsync.sublime-settings",
+	"stsync.last-update"
+	],
+	"gistId": "4573202"
+}
