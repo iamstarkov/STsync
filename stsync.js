@@ -16,7 +16,8 @@ var express = require('express'),
 // Extend underscore with my helpful mini functions;
 _.mixin({
 	unixSec2mtime : function(unixSec) {
-		return moment.utc(unixSec*1000).format("ddd, DD MMM YYYY HH:mm:ss [GMT]");
+		// return moment.utc(unixSec*1000).format("ddd, DD MMM YYYY HH:mm:ss ZZ");
+		return moment.utc(unixSec*1000).format("ddd, DD MMM YYYY HH:mm:ss");
 	},
 	mtime2unixSec : function(mtime) {
 		return moment(mtime).unix();
@@ -98,18 +99,15 @@ _.mixin({
 
 STsync = function () {
 
-	// internal settings
-	this.appId = '5f4f0546d36a62e59428';
-	this.appSecret = '90abc81d07fd055bb9a44fc018ef5b8bbe70c459';
-
-	this.host = 'localhost';
-	this.port = '2121';
-	
-	this.settingsFolder = './settings/';
+	// this.settingsFolder = './settings/';
 	this.lastUpdateFile = 'stsync.last-update';
+
 	this.generalSettingsFile = './stsync.sublime-settings';
-	this.userSettingsFile = this.settingsFolder + this.generalSettingsFile;
-	
+	this.getUserSettingsFile = function () {
+		var self = this;
+
+		return self.userSettingsFile = self.settingsFolder + self.generalSettingsFile;
+	};
 
 	this.syncIsGoing = false;
 
@@ -117,9 +115,51 @@ STsync = function () {
 	// OAUTH
 	//
 	
-	this.auth = function (cb) {
-		console.log('auth');
+	this.auth = function () {
 		var self = this;
+
+		cb = _.last(arguments);
+
+		args = _.initial(arguments);
+
+
+		if (args.length == 1 && _.isObject( args[0]) ) {
+			self.authByOAUTH(args[0], cb);
+		}
+
+		if (args.length == 2) {
+			self.authByPassword(args[0], args[1], cb);
+		}
+
+		return self;
+	};
+
+	this.authByPassword = function (username, password, cb) {
+		var self = this;
+		
+		self.username = username;
+
+		github.authenticate({
+			"type": "basic",
+			"username": username,
+			"password": password
+		});
+
+		cb();
+	
+		return self;
+	};
+	
+	this.authByOAUTH = function (options, cb) {
+		var self = this;
+
+		// console.log(options);
+
+		// options
+		//     appId
+		//     appSecret
+		//     host
+		//     port
 
 		passport.serializeUser(function(user, done) {
 			done(null, user);
@@ -132,23 +172,23 @@ STsync = function () {
 
 		passport.use(new GitHubStrategy(
 			{
-				clientID: self.appId,
-				clientSecret: self.appSecret,
-				callbackURL: "http://"+self.host+":"+self.port+"/auth/github/callback",
+				clientID: options.appId,
+				clientSecret: options.appSecret,
+				callbackURL: "http://"+options.host+":"+options.port+"/auth/github/callback",
 				scope: ["gist"]
 			},
 			function(accessToken, refreshToken, profile, done) {
+	
+		
+				self.username = profile._json.login;
+				self.token = accessToken;
 
-				
-				// console.log('==========================');
-				// console.log(accessToken, folder);
-				// console.log(profile);
-				// profile = eval('(' + profile + ')');
-				// console.log('==========================');
-				
-				
-				var username = profile._json.login;
-				cb(username, accessToken);
+				github.authenticate({
+					"type": "oauth",
+					"token": self.token
+				});
+
+				cb();
 				
 				process.nextTick(function () {
 					return done(null, profile);
@@ -165,7 +205,7 @@ STsync = function () {
 		app.configure(function() {
 			app.set('views', __dirname + '/views');
 			app.set('view engine', 'ejs');
-			app.use(express.logger());
+			// app.use(express.logger());
 			app.use(express.cookieParser());
 			app.use(express.bodyParser());
 			app.use(express.methodOverride());
@@ -212,14 +252,16 @@ STsync = function () {
 			res.redirect('/');
 		});
 
-		app.listen(self.port);
+		app.listen(options.port);
 
-		forceOpen('http://'+self.host+':'+self.port+'/login');
+		forceOpen('http://'+options.host+':'+options.port+'/login');
 
 		function ensureAuthenticated(req, res, next) {
 			if (req.isAuthenticated()) { return next(); }
 			res.redirect('/login');
 		}
+		
+		return self;
 	};
 
 	//===========================================//
@@ -229,7 +271,6 @@ STsync = function () {
 	//
 
 	this.updateLocal = function (gist, cb) {
-		console.log('updateLocal');
 		var self = this;
 
 		var remoteFilesList = self.getGistFilesList(gist);
@@ -238,7 +279,7 @@ STsync = function () {
 		// files from localFilesList that are not present in the remoteFilesList
 		var deletingFilesList = _.difference(localFilesList, remoteFilesList);
 		
-		
+	
 		_.each(deletingFilesList, function (element, index, list) {
 			fs.unlinkSync(self.settingsFolder+element);
 		});
@@ -261,7 +302,6 @@ STsync = function () {
 	};
 
 	this.getLocalLastUpdate = function () {
-		console.log('getLocalLastUpdate');
 		var self = this;
 		var file = self.settingsFolder+self.lastUpdateFile;
 		
@@ -273,13 +313,10 @@ STsync = function () {
 	};
 
 	this.getLocalFilesList = function () {
-		console.log('getLocalFilesList');
-		var self = this;
-		return fs.readdirSync(self.settingsFolder);
+		return fs.readdirSync(this.settingsFolder);
 	};
 
 	this.getLocalFiles = function () {
-		console.log('getLocalFiles');
 		var self = this;
 
 		var files = {};
@@ -302,7 +339,6 @@ STsync = function () {
 	};
 
 	this.updateLocalLastUpdate = function () {
-		console.log('updateLocalLastUpdate');
 		var self = this;
 
 		var filesMtime = _.compact(
@@ -371,7 +407,6 @@ STsync = function () {
 	//
 
 	this.updateRemote = function (gist, cb) {
-		console.log('updateRemote');
 		var self = this;
 
 		var remoteFilesList = self.getGistFilesList(gist);
@@ -420,24 +455,16 @@ STsync = function () {
 	};
 
 	this.getRemoteLastUpdate = function (gist) {
-		console.log('getRemoteLastUpdate');
-		var self = this;
-		
-		return gist.files[self.lastUpdateFile].content;
+		return gist.files[this.lastUpdateFile].content;
 	};
 
 	this.getGistFilesList = function (gist) {
-		console.log('getGistFilesList');
-		var self = this;
 		return _.map(gist.files, function(value, key) {
 			return key;
 		});
 	};
 
 	this.getDeletingRemoteFiles = function (filesLists) {
-		console.log('getDeletingRemoteFiles');
-		
-
 		var files = {};
 
 		_.each(filesLists, function (element, index, list) {
@@ -454,23 +481,20 @@ STsync = function () {
 	//
 
 	this.getGist = function (cb) {
-		console.log('getGist');
 		var self = this;
-
 		
 		github.gists.get(
 			{
 				"id": self.options('gistId')
 			},
 			function (err, res) {
-				console.log('getGist callback');
+				if (err) throw err;
 				cb(err, res);
 			}
 		);
 	};
 
 	this.getAllGists = function (pageNumber, perPage, accumulator, cb) {
-		console.log('getAllGists');
 		var self = this;
 
 		github.gists.getFromUser(
@@ -498,10 +522,8 @@ STsync = function () {
 	};
 
 	this.createGist = function (cb) {
-		console.log('createGist');
 		var self = this;
 		self.updateLocalLastUpdate();
-
 
 		var msg = {
 			"description": "optional desc: ",
@@ -509,7 +531,7 @@ STsync = function () {
 			'files': self.getLocalFiles()
 		};
 		
-		console.log(msg);
+		// console.log(msg);
 
 		github.gists.create(
 			msg,
@@ -525,29 +547,41 @@ STsync = function () {
 	
 	//
 	// APPLICATION START
-	// 
+	//
+	//
 	
-	this.init = function (username, token) {
-		console.log('init');
+	this.set = function (prop, val) {
+		var self = this;
+		
+		self[prop] = val;
+
+		return self;
+	};
+	
+	
+	this.init = function () {
 		var self = this;
 
-		this.username = username;
-		this.token = token;
+		/*
+		console.log(
+			self.settingsFolder
+		);
+		*/
+		var id = self.options('gistId');
+		// console.log(id);
 
-		github.authenticate({
-			"type": "oauth",
-			"token": this.token
-		});
-
-		if ( _.isPositiveInteger( self.options('gistId') ) ) {
+		if ( _.isPositiveInteger( id ) ) {
+			// console.log('sunsync');
 			self.runSync();
 		} else {
+			// console.log('findGistId');
 			findGistId(self.runSync);
 		}
+		
+		return self;
 	};
 
 	this.runSync = function () {
-		console.log('runSync');
 		var self = this;
 
 		setInterval(function () {
@@ -559,7 +593,6 @@ STsync = function () {
 
 	this.doSync = function () {
 		console.log('\n\t==================');
-		console.log('doSync');
 		var self = this;
 		
 		self.syncIsGoing = true;
@@ -604,9 +637,7 @@ STsync = function () {
 	};
 
 	this.findGistId = function (cb) {
-		console.log('findGistId');
 		var self = this;
-
 
 		getAllGists(1, ~~self.options('perPage'), null, function (err, res) {
 			console.log('findGistId callback');
@@ -644,7 +675,6 @@ STsync = function () {
 	};
 
 	this.isValidSettings = function (gist) {
-		console.log('isValidSettings');
 		var self = this;
 		var gistFiles = this.getGistFilesList(gist);
 		var required = self.options('requiredFiles');
@@ -695,11 +725,11 @@ STsync = function () {
 	};
 	
 	this.getOptions = function () {
-		console.log('getOptions');
 		var self = this;
 
+
 		var general =  _.getJSON( _.readFile(self.generalSettingsFile) );
-		var user    = _.getJSON( _.readFile(self.userSettingsFile) );
+		var user    = _.getJSON( _.readFile( self.getUserSettingsFile() ) );
 		
 		// console.log('general', general);
 		// console.log('user', user);
@@ -712,7 +742,6 @@ STsync = function () {
 	};
 
 	this.setOptions = function (settings) {
-		console.log('setOptions');
 		var self = this;
 		
 		settings = JSON.stringify(settings);
