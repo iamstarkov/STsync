@@ -39,6 +39,7 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
     //     underscore
     //     moment
     //     github
+    //     winston
     // OAuth required:
     //     express
     //     passport
@@ -46,7 +47,7 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
     //     passport-github
     //     ejs
 
-    npm install github underscore moment express passport open passport-github ejs
+    npm install winston github underscore moment express passport open passport-github ejs
 
 
 ## Usage ##
