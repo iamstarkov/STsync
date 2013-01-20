@@ -4,7 +4,22 @@ var fs = require('fs'),
 	moment = require('moment');
 
 	GitHubApi = require('github'),
-	github = new GitHubApi( {version: '3.0.0'} );
+	github = new GitHubApi( {version: '3.0.0'} ),
+
+
+	winston = require('winston');
+	winston.add(
+		winston.transports.File,
+		{
+			filename: './logs/'+moment().format('LL')+'.txt',
+			maxFiles: 30,
+			maxsize: 10000000 // 10M Bytes ~ 10k Kbytes ~ 10 Mbytes
+		}
+	);
+	winston.remove(winston.transports.Console);
+
+	// winston.info('Hello again distributed logs');
+
 
 // Passport
 var express = require('express'),
