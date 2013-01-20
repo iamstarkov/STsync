@@ -94,8 +94,52 @@ _.mixin({
 	isPositiveInteger : function (number) {
 		number = parseInt(number, 10);
 		return (_.isNumber(number) && !_.isNaN(number));
-	}
+	},
+	ghGetGistById : function (id, cb) {
+		github.gists.get(
+			{
+				"id": id
+			},
+			function (err, res) {
+				if (err) throw err;
+				cb(res);
+			}
+		);
+	},
+	ghCreateGist : function(msg, cb) {
+		github.gists.create(
+			msg,
+			function(err, res) {
+				if (err) throw err;
 
+				cb(res);
+			}
+		);
+	},
+	ghGetAllGists : function (username, pageNumber, perPage, accumulator, cb) {
+		github.gists.getFromUser(
+			{
+				'user': username,
+				'page': pageNumber,
+				'per_page': perPage
+			},
+			function (err, res) {
+				if (err) throw err;
+
+				accumulator = _.union(res, accumulator);
+				
+				if (_.isEqual( res.length, perPage)) {
+					// not last page
+					_.ghGetAllGists(username, ++pageNumber, perPage, accumulator, cb);
+
+				} else {
+					// last page, return all accumulated gists
+					cb(accumulator);
+				}
+
+			}
+		);
+	}
 });
 
 
@@ -105,11 +149,7 @@ STsync = function () {
 	this.lastUpdateFile = 'stsync.last-update';
 
 	this.generalSettingsFile = './stsync.sublime-settings';
-	this.getUserSettingsFile = function () {
-		var self = this;
 
-		return self.userSettingsFile = self.settingsFolder + self.generalSettingsFile;
-	};
 
 	this.syncIsGoing = false;
 
@@ -476,74 +516,6 @@ STsync = function () {
 		return files;
 	};
 
-	//===========================================//
-	
-	//
-	// GITHUB START
-	//
-
-	this.getGist = function (cb) {
-		var self = this;
-		
-		github.gists.get(
-			{
-				"id": self.options('gistId')
-			},
-			function (err, res) {
-				if (err) throw err;
-				cb(err, res);
-			}
-		);
-	};
-
-	this.getAllGists = function (pageNumber, perPage, accumulator, cb) {
-		var self = this;
-
-		github.gists.getFromUser(
-			{
-				'user': self.username,
-				'page': pageNumber,
-				'per_page': perPage
-			},
-			function (err, res) {
-				console.log('getAllGists done ', pageNumber, ' page');
-				accumulator = _.union(res, accumulator);
-				
-				if (_.isEqual( res.length, perPage)) {
-					// not last page
-					getAllGists(++pageNumber, perPage, accumulator, cb);
-
-				} else {
-					// last page, return all accumulated gists
-					console.log('getAllGists ended');
-					cb(err, accumulator);
-				}
-
-			}
-		);
-	};
-
-	this.createGist = function (cb) {
-		var self = this;
-		self.updateLocalLastUpdate();
-
-		var msg = {
-			"description": "optional desc: ",
-			"public": true,
-			'files': self.getLocalFiles()
-		};
-		
-		// console.log(msg);
-
-		github.gists.create(
-			msg,
-			function(err, res) {
-				if (err) throw err;
-
-				cb(err, res);
-			}
-		);
-	};
 
 	//===========================================//
 	
@@ -560,6 +532,11 @@ STsync = function () {
 		return self;
 	};
 	
+	this.getUserSettingsFile = function () {
+		var self = this;
+
+		return self.userSettingsFile = self.settingsFolder + self.generalSettingsFile;
+	};
 	
 	this.init = function () {
 		var self = this;
@@ -599,8 +576,9 @@ STsync = function () {
 		
 		self.syncIsGoing = true;
 
-		getGist(function (err, res) {
-			if (!err) {
+		_.ghGetGistById(
+			self.options('gistId'),
+			function (res) {
 				self.updateLocalLastUpdate();
 				
 				var localUpdate = self.getLocalLastUpdate();
@@ -635,15 +613,14 @@ STsync = function () {
 				}
 
 			}
-		});
+		);
 	};
 
 	this.findGistId = function (cb) {
 		var self = this;
 
-		getAllGists(1, ~~self.options('perPage'), null, function (err, res) {
-			console.log('findGistId callback');
-			// console.log(typeof res);
+		_.ghGetAllGists(self.username, ~~self.options('perPage'), null, function (res) {
+
 			var validGist = _.find(
 				res,
 				function (gist) {
@@ -655,19 +632,22 @@ STsync = function () {
 
 			if ((validGist) && _.isPositiveInteger(validGist.id)) {
 
-				console.log('valid gist id');
-
 				self.options('gistId', validGist.id);
 
 				cb();
 
 			} else {
 
-				console.log('not valid gist id');
-				createGist(function (err, res) {
- 
-					self.options('gistId', res.id);
+				self.updateLocalLastUpdate();
 
+				var msg = {
+					"description": "optional desc: ",
+					"public": true,
+					'files': self.getLocalFiles()
+				};
+
+				_.ghCreateGist(msg, function (res) {
+ 					self.options('gistId', res.id);
 					cb();
 				});
 
