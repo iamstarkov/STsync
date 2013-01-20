@@ -1,0 +1,1 @@
+{"level":"info","message":"Hello again distributed logs","timestamp":"2013-01-20T21:17:54.167Z"}

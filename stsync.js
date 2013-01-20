@@ -1,22 +1,30 @@
 // STsync
-var fs = require('fs'),
-	_  = require('underscore'),
-	moment = require('moment');
+var fs = require('fs'), // http://nodejs.org/docs/latest/api/fs.html
+	_  = require('underscore'), // https://github.com/documentcloud/underscore
+	moment = require('moment'), // https://github.com/timrwood/moment/
 
-	GitHubApi = require('github'),
+	
+	GitHubApi = require('github'), // https://github.com/mikedeboer/node-github
 	github = new GitHubApi( {version: '3.0.0'} ),
 
-
-	winston = require('winston');
+	
+	winston = require('winston'); // https://github.com/flatiron/winston
 	winston.add(
 		winston.transports.File,
 		{
 			filename: './logs/'+moment().format('LL')+'.txt',
 			maxFiles: 30,
 			maxsize: 10000000 // 10M Bytes ~ 10k Kbytes ~ 10 Mbytes
+			// handleExceptions: true
 		}
 	);
-	winston.remove(winston.transports.Console);
+	// winston.remove(winston.transports.Console);
+
+	// Log levels:
+	//		log   → functions names, and callbacks for tracing 
+	//		info  → algorythm comments
+	//		warn  → someting bad (not fatal) happens
+	//		error → some error occurs
 
 	// winston.info('Hello again distributed logs');
 
@@ -116,8 +124,7 @@ _.mixin({
 				"id": id
 			},
 			function (err, res) {
-				if (err) throw err;
-				cb(res);
+				cb(err, res);
 			}
 		);
 	},
@@ -125,9 +132,7 @@ _.mixin({
 		github.gists.create(
 			msg,
 			function(err, res) {
-				if (err) throw err;
-
-				cb(res);
+				cb(err, res);
 			}
 		);
 	},
@@ -139,8 +144,6 @@ _.mixin({
 				'per_page': perPage
 			},
 			function (err, res) {
-				if (err) throw err;
-
 				accumulator = _.union(res, accumulator);
 				
 				if (_.isEqual( res.length, perPage)) {
@@ -149,7 +152,7 @@ _.mixin({
 
 				} else {
 					// last page, return all accumulated gists
-					cb(accumulator);
+					cb(err, accumulator);
 				}
 
 			}
@@ -157,14 +160,13 @@ _.mixin({
 	}
 });
 
+// winston.info();
 
 STsync = function () {
 
 	// this.settingsFolder = './settings/';
 	this.lastUpdateFile = 'stsync.last-update';
-
 	this.generalSettingsFile = './stsync.sublime-settings';
-
 
 	this.syncIsGoing = false;
 
@@ -173,18 +175,22 @@ STsync = function () {
 	//
 	
 	this.auth = function () {
+		winston.info('auth');
 		var self = this;
 
 		cb = _.last(arguments);
 
 		args = _.initial(arguments);
 
+		winston.info('auth arguments:', arguments);
 
 		if (args.length == 1 && _.isObject( args[0]) ) {
+			winston.info('selected OAUTH-based autharization');
 			self.authByOAUTH(args[0], cb);
 		}
 
 		if (args.length == 2) {
+			winston.info('selected password-based autharization');
 			self.authByPassword(args[0], args[1], cb);
 		}
 
@@ -192,15 +198,20 @@ STsync = function () {
 	};
 
 	this.authByPassword = function (username, password, cb) {
+		winston.info('authByPassword');
 		var self = this;
 		
 		self.username = username;
 
-		github.authenticate({
+		var authObject = {
 			"type": "basic",
 			"username": username,
 			"password": password
-		});
+		};
+
+		winston.info('password-based auth data:', authObject);
+
+		github.authenticate(authObject);
 
 		cb();
 	
@@ -208,6 +219,7 @@ STsync = function () {
 	};
 	
 	this.authByOAUTH = function (options, cb) {
+		winston.info('authByOAUTH');
 		var self = this;
 
 		// console.log(options);
@@ -292,7 +304,7 @@ STsync = function () {
 			'/auth/github',
 			passport.authenticate('github'),
 			function(req, res) {
-				console.log(res);
+				// console.log(res);
 			}
 		);
 
@@ -328,13 +340,19 @@ STsync = function () {
 	//
 
 	this.updateLocal = function (gist, cb) {
+		winston.info('updateLocal');
+		winston.info('start update Local Copy');
 		var self = this;
 
 		var remoteFilesList = self.getGistFilesList(gist);
 		var localFilesList = self.getLocalFilesList();
 
+		winston.info('remoteFilesList', remoteFilesList);
+		winston.info('localFilesList', localFilesList);
+
 		// files from localFilesList that are not present in the remoteFilesList
 		var deletingFilesList = _.difference(localFilesList, remoteFilesList);
+		winston.info('deletingFilesList', deletingFilesList);
 		
 	
 		_.each(deletingFilesList, function (element, index, list) {
@@ -344,6 +362,8 @@ STsync = function () {
 
 		
 		var lastUpdSec = gist.files[self.lastUpdateFile].content;
+
+		winston.info('Remote Copy update time:', lastUpdSec);
 		_.each(remoteFilesList, function (element, index, list) {
 
 			var filePath = self.settingsFolder+element;
@@ -359,21 +379,29 @@ STsync = function () {
 	};
 
 	this.getLocalLastUpdate = function () {
+		winston.info('getLocalLastUpdate');
 		var self = this;
 		var file = self.settingsFolder+self.lastUpdateFile;
 		
+		winston.info('Local copy update file:', file);
 		if (fs.existsSync(file)) {
-			return _.readFile(file);
+			var lastUpdSec = _.readFile(file);
+			winston.info('Remote Copy update time:', lastUpdSec);
+			return lastUpdSec;
 		} else {
 			return 0;
 		}
 	};
 
 	this.getLocalFilesList = function () {
-		return fs.readdirSync(this.settingsFolder);
+		winston.info('getLocalFilesList');
+		var files = fs.readdirSync(this.settingsFolder);
+		winston.info('Local Copy files list:', files);
+		return files;
 	};
 
 	this.getLocalFiles = function () {
+		winston.info('getLocalFiles');
 		var self = this;
 
 		var files = {};
@@ -392,10 +420,12 @@ STsync = function () {
 			}
 		);
 
+		winston.info('Local Copy files object:', files);
 		return files;
 	};
 
 	this.updateLocalLastUpdate = function () {
+		winston.info('updateLocalLastUpdate');
 		var self = this;
 
 		var filesMtime = _.compact(
@@ -411,49 +441,33 @@ STsync = function () {
 			)
 		);
 		
-		// console.log('filesMtime', filesMtime.length, filesMtime);
+		winston.info('List of local files’s mtimes:', filesMtime);
 
 		var folderMtime = _.mtime2unixSec(
 			fs.statSync(self.settingsFolder).mtime
 		);
+		winston.info('Local folder’s mtime:', folderMtime);
 
-		// console.log('folderMtime', folderMtime);
 
 		filesMtime.push(folderMtime);
 
 		var mtimes = filesMtime;
-
-		// console.log('mtimes', mtimes.length, mtimes);
-
+		winston.info('Local folder’s mtime plus files’ mtimes:', mtimes);
 
 		var lastUpdateNew = _.max(mtimes);
-		// console.log('lastUpdateNew', lastUpdateNew);
-
-
-		// console.log('\tfilesMtime', filesMtime);
-		// console.log('\tfolderMtime', folderMtime);
-		// console.log('\tmtimes', mtimes);
-		// console.log('\tlastUpdateNew', lastUpdateNew);
-
-
-
-
-		/*
-		console.log('lastUpdateNew\n\t', lastUpdateNew);
-		console.log('getLocalLastUpdate\n\t', self.getLocalLastUpdate() );
-		 */
+		winston.info(('Local Copy update time:', lastUpdateNew);
 
 
 		if (
 			parseInt(lastUpdateNew, 10) !== parseInt(self.getLocalLastUpdate(), 10)
 		) {
-			console.log('Local files was updated and need to be synced');
+			winston.info('Local files was changed and need to be synced (uploaded)');
 			_.writeFile(
 				self.settingsFolder+self.lastUpdateFile,
 				lastUpdateNew
 			);
 		} else {
-			console.log('Nothing happens here');
+			winston.info('No one file has not been changed');
 		}
 	};
 
@@ -464,24 +478,30 @@ STsync = function () {
 	//
 
 	this.updateRemote = function (gist, cb) {
+		winston.info('updateRemote');
+		winston.info('start update Remote Copy');
 		var self = this;
 
 		var remoteFilesList = self.getGistFilesList(gist);
 		var localFilesList = self.getLocalFilesList();
 
-		var deletingFilesList = _.difference(remoteFilesList, localFilesList);
+		winston.info('remoteFilesList', remoteFilesList);
+		winston.info('localFilesList', localFilesList);
 
-		console.log('number of remoteFilesList count\n\t', remoteFilesList.length);
-		console.log('number of localFilesList\n\t', localFilesList.length);
-		console.log('number of filesToDelete\n\t', deletingFilesList.length);
-		console.log('number of filesToAdd\n\t', _.difference(localFilesList, remoteFilesList).length);
+		var deletingFilesList = _.difference(remoteFilesList, localFilesList);
+		winston.info('deletingFilesList', deletingFilesList);
+
+		winston.info('number of remoteFilesList count\n\t', remoteFilesList.length);
+		winston.info('number of localFilesList\n\t', localFilesList.length);
+		winston.info('number of filesToDelete\n\t', deletingFilesList.length);
+		winston.info('number of filesToAdd\n\t', _.difference(localFilesList, remoteFilesList).length);
 
 		var existingFiles = self.getLocalFiles();
 		var deletingFiles = self.getDeletingRemoteFiles(deletingFilesList);
 
 
-		// console.log('existingFiles\n\t', existingFiles);
-		// console.log('deletingFiles\n\t', deletingFiles);
+		winston.info('existingFiles\n\t', existingFiles);
+		winston.info('deletingFiles\n\t', deletingFiles);
 		
 		
 		var files = existingFiles;
@@ -489,45 +509,50 @@ STsync = function () {
 			files = _.extend(files, deletingFiles);
 		}
 
-		// console.log('files\n\t', files);
 		var msg = {
 			"id": gist.id,
 			"description": gist.description,
 			"files": files
-			// "files": deletingFiles
-			// "files": existingFiles
 		};
 		
-		// console.log('MSG\n', msg);
+		winston.info('GITHUB EDIT MSG', msg);
 
 		github.gists.edit(
 			msg,
 			function(err, res) {
 				if (err) throw err;
 				
-				console.log('updateRemote callback');
 				cb(err, res);
 			}
 		);
 	};
 
 	this.getRemoteLastUpdate = function (gist) {
-		return gist.files[this.lastUpdateFile].content;
+		winston.info('getRemoteLastUpdate');
+		var time = gist.files[this.lastUpdateFile].content;
+		winston.info('Remote last update', time);
+		return time;
 	};
 
 	this.getGistFilesList = function (gist) {
-		return _.map(gist.files, function(value, key) {
+		winston.info('getGistFilesList');
+		var filesList = _.map(gist.files, function(value, key) {
 			return key;
 		});
+		winston.info('Remote Files list', filesList);
+		return filesList;
 	};
 
 	this.getDeletingRemoteFiles = function (filesLists) {
+		winston.info('getDeletingRemoteFiles');
+		winston.info('Generate JSON for files needs to be deleted');
 		var files = {};
 
 		_.each(filesLists, function (element, index, list) {
 			files[element] = null;
 		});
-
+		
+		winston.info('Files needs to be deleted', files);
 		return files;
 	};
 
@@ -540,6 +565,9 @@ STsync = function () {
 	//
 	
 	this.set = function (prop, val) {
+		winston.info('set');
+		winston.info('Set app cofiguration', prop, val);
+		
 		var self = this;
 		
 		self[prop] = val;
@@ -548,27 +576,30 @@ STsync = function () {
 	};
 	
 	this.getUserSettingsFile = function () {
+		winston.info('getUserSettingsFile');
 		var self = this;
-
-		return self.userSettingsFile = self.settingsFolder + self.generalSettingsFile;
+		self.userSettingsFile = self.settingsFolder + self.generalSettingsFile;
+		
+		winston.info('User settings file:', self.userSettingsFile);
+		return self.userSettingsFile;
 	};
 	
 	this.init = function () {
+		winston.info('init');
+		winston.info('Initialization app');
 		var self = this;
 
-		/*
-		console.log(
-			self.settingsFolder
-		);
-		*/
+		winston.info('Settings folder', self.settingsFolder);
+
 		var id = self.options('gistId');
-		// console.log(id);
+		
+		winston.info('Gist id:', id);
 
 		if ( _.isPositiveInteger( id ) ) {
-			// console.log('sunsync');
+			winston.info('GistId exists and positive integer');
 			self.runSync();
 		} else {
-			// console.log('findGistId');
+			winston.info('GistId not valid');
 			findGistId(self.runSync);
 		}
 		
@@ -576,54 +607,80 @@ STsync = function () {
 	};
 
 	this.runSync = function () {
+		winston.info('runSync');
+		winston.info('Start syncronization step in a loop');
+
 		var self = this;
 
+		var steSize = ~~self.options('updateFrequency');
+		
+		winston.info('Syncronization step size: '+stepSize+'ms.');
+
+
 		setInterval(function () {
+			winston.info('Loop step starts');
 			if (!self.syncIsGoing) {
+				winston.info('Another step is not going now, so continue');
 				self.doSync();
+			} else {
+				winston.info('Another step is going, exit this step');
 			}
-		}, ~~self.options('updateFrequency') );
+		}, stepSize );
 	};
 
 	this.doSync = function () {
-		console.log('\n\t==================');
+		winston.info('doSync');
+		winston.info('Start sync step');
+
 		var self = this;
 		
 		self.syncIsGoing = true;
 
+		winston.info('set syncIsGoing flag:', self.syncIsGoing);
+
+		var gistId = self.options('gistId');
+		winston.info('settings’ gistId', gistId);
 		_.ghGetGistById(
-			self.options('gistId'),
-			function (res) {
+			gistId,
+			function (err, res) {
+				if (err) throw err;
+				// @TODO: handle the error when gistId exists in settings file,
+				// but gist by this id has been deleted from the server
 				self.updateLocalLastUpdate();
 				
 				var localUpdate = self.getLocalLastUpdate();
 				var remoteUpdate = self.getRemoteLastUpdate(res);
 
+				winston.info('localUpdate', localUpdate);
+				winston.info('remoteUpdate', remoteUpdate);
+
+
 				if (localUpdate != remoteUpdate) {
-					console.log('sync required');
-					console.log('delta: ', localUpdate - remoteUpdate);
+					winston.info('Sync required, ’cause of timestamps are not identical');
+					winston.info('Timestamps delta (local-remote): ', localUpdate - remoteUpdate);
 
 					if (localUpdate > remoteUpdate) {
-						console.log('REMOTE required sync');
+						winston.info('Sync direction: LOCAL → REMOTE');
 
 						self.updateRemote(res, function (err, res) {
-							console.log('remote update successfull');
+							winston.info('Remote update successfull');
 							
-							console.log('End of do sync. Fuck yeah!\n\n');
+							winston.info('End of sync step.');
 							self.syncIsGoing = false;
 						});
 					} else {
-						console.log('LOCAL required sync');
+						winston.info('Sync direction: REMOTE → LOCAL');
+
 						self.updateLocal(res, function (err, res) {
-							console.log('local update successfull');
+							winston.info('Local update successfull');
 							
-							console.log('End of do sync. Fuck yeah!\n\n');
+							winston.info('End of sync step.');
 							self.syncIsGoing = false;
 						});
 					}
 				} else {
-					console.log('All is already synced, congrats');
-					console.log('End of do sync. Fuck yeah!\n\n');
+					winston.info('Two Copies are synced between itself');
+					winston.info('End of sync step.');
 					self.syncIsGoing = false;
 				}
 
@@ -632,57 +689,79 @@ STsync = function () {
 	};
 
 	this.findGistId = function (cb) {
+		winston.info('findGistId');
+		winston.info('Find Gist from all gists from server');
+
 		var self = this;
 
-		_.ghGetAllGists(self.username, ~~self.options('perPage'), null, function (res) {
+		_.ghGetAllGists(self.username, 1, ~~self.options('perPage'), null,
+			function (err, res) {
 
-			var validGist = _.find(
-				res,
-				function (gist) {
-					if (gist) {
-						return self.isValidSettings(gist);
+				if (err) throw err;
+
+				var validGist = _.find(
+					res,
+					function (gist) {
+						if (gist) {
+							return self.isValidSettings(gist);
+						}
 					}
-				}
-			);
+				);
 
-			if ((validGist) && _.isPositiveInteger(validGist.id)) {
+				winston.info('Gist with valid list of files:', validGist);
 
-				self.options('gistId', validGist.id);
+				if ((validGist) && _.isPositiveInteger(validGist.id)) {
+					winston.info('Gist was found on the server');
+					
 
-				cb();
+					self.options('gistId', validGist.id);
 
-			} else {
-
-				self.updateLocalLastUpdate();
-
-				var msg = {
-					"description": "optional desc: ",
-					"public": true,
-					'files': self.getLocalFiles()
-				};
-
-				_.ghCreateGist(msg, function (res) {
- 					self.options('gistId', res.id);
 					cb();
-				});
+
+				} else {
+					winston.info('There is no gist on the server');
+					winston.info('Let’s create gist');
+
+					self.updateLocalLastUpdate();
+
+					var msg = {
+						"description": "optional desc: ",
+						"public": true,
+						'files': self.getLocalFiles()
+					};
+					
+					winston.info('Create gist MSG object', msg);
+
+					_.ghCreateGist(msg, function (err, res) {
+						if (err) throw err;
+
+	 					self.options('gistId', res.id);
+						cb();
+					});
+
+				}
 
 			}
-
-		});
+		);
 	};
 
 	this.isValidSettings = function (gist) {
+		winston.info('isValidSettings');
+
 		var self = this;
 		var gistFiles = this.getGistFilesList(gist);
 		var required = self.options('requiredFiles');
 
-		// console.log(gistFiles);
-		// console.log(required);
+		winston.info('gistFiles', gistFiles);
+		winston.info('required', required);
 		var intersection = _.intersection(required, gistFiles);
-		// console.log(intersection);
+		
+		winston.info('intersection', intersection);
 
-		// return (required.length === intersection.length);
-		return _.isEqual(required, intersection);
+		var res = _.isEqual(required, intersection);
+		winston.info('Is settings valid:', res);
+
+		return res;
 	};
 
 	//===========================================//
@@ -692,8 +771,10 @@ STsync = function () {
 	//
 
 	this.options = function () {
-		console.log('options');
+		winston.info('options');
 		var self = this;
+
+		winston.info('options arguments', arguments);
 
 		var first, second;
 		if (arguments[0]) {
@@ -722,28 +803,30 @@ STsync = function () {
 	};
 	
 	this.getOptions = function () {
+		winston.info('getOptions');
 		var self = this;
 
 
 		var general =  _.getJSON( _.readFile(self.generalSettingsFile) );
 		var user    = _.getJSON( _.readFile( self.getUserSettingsFile() ) );
 		
-		// console.log('general', general);
-		// console.log('user', user);
+		winston.info('general settings: ', general);
+		winston.info('user settings: ', user);
 
 		var options = _.extend(general, user);
 
-		// console.log('options', options);
+		winston.info('options', options);
 
 		return options;
 	};
 
 	this.setOptions = function (settings) {
+		winston.info('setOptions');
 		var self = this;
 		
 		settings = JSON.stringify(settings);
 
-		// console.log('settings', settings);
+		winston.info('settings', settings);
 
 		_.writeFile(
 			this.userSettingsFile,
