@@ -7,6 +7,7 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Changelog: ##
 
+* 0.0.11 — Refactoring: added normal logger ([winston][2]
 * 0.0.10 *(18 jan 2012)* — Refactoring start (hide OAUTH in stsync methods)
 * 0.0.9 *(18 jan 2012)* — Created OAUTH authorization via web interface
 * 0.0.8 *(17 jan 2012)* — Synchronization worked
@@ -21,7 +22,6 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Roadmap ##
 
-* 0.0.11 — Refactoring: added normal logger ([winston][2]
 * 0.0.12 — Refactoring: polimorhism for CopyLocal and CopyRemote
 * 0.0.13 — Refactoring: chaining
 * 0.0.14 — Refactoring end
