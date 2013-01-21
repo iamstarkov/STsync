@@ -1,0 +1,20 @@
+{
+	"schema_version": "1.2",
+	"packages": [
+		{
+			"name": "STsync",
+			"description": "Sublime text configuration synchronization",
+			"author": "Vladimir Starkov @matmuchrapna",
+			"homepage": "https://github.com/matmuchrapna/STsync",
+			"last_modified": "2013-12-12 05:04:31",
+			"platforms": {
+				"*": [
+					{
+						"version": "0.0.11",
+						"url": "https://nodeload.github.com/matmuchrapna/STsync/zip/master"
+					}
+				]
+			}
+		}
+	]
+}
