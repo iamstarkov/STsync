@@ -1,3 +1,4 @@
+// https://developer.mozilla.org/en-US/docs/JavaScript/Introduction_to_Object-Oriented_JavaScript
 // STsync
 var fs = require('fs'), // http://nodejs.org/docs/latest/api/fs.html
 	_  = require('underscore'), // https://github.com/documentcloud/underscore
