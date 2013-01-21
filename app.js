@@ -1,7 +1,7 @@
 // app.js
 var sync = require('./stsync.js');
 
-var folder = process.argv[2];
+var folder   = process.argv[2];
 var username = process.argv[3];
 var password = process.argv[4];
 
@@ -13,15 +13,23 @@ var OAUTH = {
 };
 
 
+
 sync()
-	.set('settingsFolder', folder)
-	.auth(
-		username, password,
-		// OAUTH,
-		function () {
-			sync().init();
-		}
-	)
-;
+	.set('settingsFolder', folder);
+	if (_.isUndefined(username)) {
+		sync().auth(
+			OAUTH,
+			function () {
+				sync().init();
+			}
+		);
+	} else {
+		sync().auth(
+			username, password,
+			function () {
+				sync().init();
+			}
+		);
+	}
 
 
