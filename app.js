@@ -1,5 +1,6 @@
 // app.js
 var sync = require('./stsync.js');
+var _    = require('underscore');
 
 var folder   = process.argv[2];
 var username = process.argv[3];

@@ -13,8 +13,9 @@ var fs = require('fs'), // http://nodejs.org/docs/latest/api/fs.html
 	winston.add(
 		winston.transports.File,
 		{
-			filename: './logs/'+moment().format('LL')+'.txt',
-			maxFiles: 30,
+			filename: './Data/Packages/STsync/logs/'+moment().format('LL')+'.txt',
+			// filename: './logs/log.txt',
+			maxFiles: 3,
 			maxsize: 10000000 // 10M Bytes ~ 10k Kbytes ~ 10 Mbytes
 			// handleExceptions: true
 		}
@@ -22,7 +23,7 @@ var fs = require('fs'), // http://nodejs.org/docs/latest/api/fs.html
 	// winston.remove(winston.transports.Console);
 
 	// Log levels:
-	//		log   → functions names, and callbacks for tracing 
+	//		log   → functions names, and callbacks for tracing
 	//		info  → algorythm comments
 	//		warn  → someting bad (not fatal) happens
 	//		error → some error occurs
@@ -456,7 +457,7 @@ STsync = function () {
 		winston.info('Local folder’s mtime plus files’ mtimes:', mtimes);
 
 		var lastUpdateNew = _.max(mtimes);
-		winston.info(('Local Copy update time:', lastUpdateNew);
+		winston.info('Local Copy update time:', lastUpdateNew);
 
 
 		if (
