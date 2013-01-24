@@ -1,11 +1,12 @@
 // app.js
-var stsync = require('./stsync.js');
-var _   = require('underscore');
+var stsync = require('./stsync-dev.js');
+var _      = require('underscore');
+
 
 var args     = process.argv.slice(2);
-var folder   = args[0];
-var username = args[1];
-var password = args[2];
+// var folder   = args[0];
+var username = args[0];
+var password = args[1];
 
 var OAUTH = {
 	appId: '5f4f0546d36a62e59428',
@@ -15,9 +16,10 @@ var OAUTH = {
 };
 
 var app = stsync();
-app.relativePath = './Data/Packages/'; // folder
+// app.relativePath = './Data/Packages/'; // folder
 
-if (_.isUndefined(username)) {
+
+if ( _.isUndefined(username) ) {
 	app.auth( OAUTH, app.runSync );
 } else {
 	app.auth( username, password, app.runSync );
