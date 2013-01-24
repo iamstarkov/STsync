@@ -69,6 +69,9 @@ _.mixin({
 	writeFile : function (file, content) {
 		fs.writeFileSync(file, content, 'utf-8');
 	},
+	removeFile : function (file) {
+		fs.unlinkSync(file);
+	},
 	getAtime : function (file) {
 		return fs.statSync(file).atime;
 	},
@@ -82,6 +85,8 @@ _.mixin({
 			mtime
 		);
 	},
+	/*
+	
 	escapeQuotes : function (string) {
 		// https://en.wikipedia.org/wiki/Quotation_mark#Typing_quotation_marks_on_a_computer_keyboard
 		// https://en.wikipedia.org/wiki/Apostrophe#Entering_apostrophes
@@ -116,6 +121,7 @@ _.mixin({
 			.replace(/U+2057/g, "ʺ")  // Modifier letter double prime
 		;
 	},
+	*/
 	isPositiveInteger : function (number) {
 		number = parseInt(number, 10);
 		return (_.isNumber(number) && !_.isNaN(number));
@@ -167,8 +173,15 @@ _.mixin({
 STsync = function () {
 
 	// this.settingsFolder = './settings/';
+	
+	this.relativePath        = './Data/Packages/';
+	this.relativePluginPath  = this.relativePath + 'STsync/';
+	this.relativeUserPath    = this.relativePath + 'UserFake/';
+	this.userSettingsFile    = this.relativeUserPath + this.settingsFile;
+	this.generalSettingsFile = this.relativePluginPath + this.settingsFile;
+	
 	this.lastUpdateFile = 'stsync.last-update';
-	this.generalSettingsFile = './stsync.sublime-settings';
+	this.settingsFile   = 'stsync.sublime-settings';
 
 	this.syncIsGoing = false;
 
@@ -211,7 +224,7 @@ STsync = function () {
 			"password": password
 		};
 
-		winston.info('password-based auth data:', authObject);
+		// winston.info('password-based auth data:', authObject);
 
 		github.authenticate(authObject);
 
@@ -358,24 +371,23 @@ STsync = function () {
 		
 	
 		_.each(deletingFilesList, function (element, index, list) {
-			fs.unlinkSync(self.settingsFolder+element);
+			_.removeFile(this.relativeUserPath+element);
 		});
 		
 
-		
 		var lastUpdSec = gist.files[self.lastUpdateFile].content;
 
 		winston.info('Remote Copy update time:', lastUpdSec);
 		_.each(remoteFilesList, function (element, index, list) {
 
-			var filePath = self.settingsFolder+element;
-			_.writeFile(filePath, gist.files[element].content);
+			var filePath = this.relativeUserPath+element;
+			_.writeFile(filePath, JSON.parse(gist.files[element].content) );
 			
 			_.updateMtime(filePath, _.unixSec2mtime(lastUpdSec));
 			
 		});
 
-		_.updateMtime(self.settingsFolder, _.unixSec2mtime(lastUpdSec));
+		_.updateMtime(this.relativeUserPath, _.unixSec2mtime(lastUpdSec));
 
 		cb();
 	};
@@ -383,7 +395,7 @@ STsync = function () {
 	this.getLocalLastUpdate = function () {
 		winston.info('getLocalLastUpdate');
 		var self = this;
-		var file = self.settingsFolder+self.lastUpdateFile;
+		var file = this.relativeUserPath+self.lastUpdateFile;
 		
 		winston.info('Local copy update file:', file);
 		if (fs.existsSync(file)) {
@@ -397,7 +409,7 @@ STsync = function () {
 
 	this.getLocalFilesList = function () {
 		winston.info('getLocalFilesList');
-		var files = fs.readdirSync(this.settingsFolder);
+		var files = fs.readdirSync(this.relativeUserPath);
 		winston.info('Local Copy files list:', files);
 		return files;
 	};
@@ -411,12 +423,12 @@ STsync = function () {
 		_.each(
 			self.getLocalFilesList(),
 			function (element, index, list) {
-				var fileContent = _.readFile(self.settingsFolder+element);
+				var fileContent = _.readFile(self.relativeUserPath + element);
 
 				// not to sync empty files, ’cause wtf and they brokes JSON
 				if (fileContent !== '') {
 					files[element] = {
-						"content": _.escapeQuotes(fileContent)
+						"content": JSON.stringify(fileContent)
 					};
 				}
 			}
@@ -432,11 +444,11 @@ STsync = function () {
 
 		var filesMtime = _.compact(
 			_.map(
-				fs.readdirSync(self.settingsFolder),
+				fs.readdirSync(self.relative+self.settingsFolder),
 				function (file, index, list) {
 					var mtime, mtime_unix;
 					if (file != self.lastUpdateFile) {
-						mtime = fs.statSync(self.settingsFolder+file).mtime;
+						mtime = fs.statSync(self.relativeUserPath + file).mtime;
 						return _.mtime2unixSec(mtime);
 					}
 				}
@@ -446,7 +458,7 @@ STsync = function () {
 		winston.info('List of local files’s mtimes:', filesMtime);
 
 		var folderMtime = _.mtime2unixSec(
-			fs.statSync(self.settingsFolder).mtime
+			fs.statSync(self.relativeUserPath).mtime
 		);
 		winston.info('Local folder’s mtime:', folderMtime);
 
@@ -465,7 +477,7 @@ STsync = function () {
 		) {
 			winston.info('Local files was changed and need to be synced (uploaded)');
 			_.writeFile(
-				self.settingsFolder+self.lastUpdateFile,
+				self.relativeUserPath+self.lastUpdateFile,
 				lastUpdateNew
 			);
 		} else {
@@ -564,34 +576,13 @@ STsync = function () {
 	//
 	// APPLICATION START
 	//
-	//
-	
-	this.set = function (prop, val) {
-		winston.info('set');
-		winston.info('Set app cofiguration', prop, val);
-		
-		var self = this;
-		
-		self[prop] = val;
-
-		return self;
-	};
-	
-	this.getUserSettingsFile = function () {
-		winston.info('getUserSettingsFile');
-		var self = this;
-		self.userSettingsFile = self.settingsFolder + self.generalSettingsFile;
-		
-		winston.info('User settings file:', self.userSettingsFile);
-		return self.userSettingsFile;
-	};
 	
 	this.init = function () {
 		winston.info('init');
 		winston.info('Initialization app');
 		var self = this;
 
-		winston.info('Settings folder', self.settingsFolder);
+		winston.info('Settings folder', self.relativeUserPath);
 
 		var id = self.options('gistId');
 		
@@ -614,7 +605,7 @@ STsync = function () {
 
 		var self = this;
 
-		var steSize = ~~self.options('updateFrequency');
+		var stepSize = ~~self.options('updateFrequency');
 		
 		winston.info('Syncronization step size: '+stepSize+'ms.');
 
@@ -645,45 +636,71 @@ STsync = function () {
 		_.ghGetGistById(
 			gistId,
 			function (err, res) {
-				if (err) throw err;
-				// @TODO: handle the error when gistId exists in settings file,
-				// but gist by this id has been deleted from the server
-				self.updateLocalLastUpdate();
-				
-				var localUpdate = self.getLocalLastUpdate();
-				var remoteUpdate = self.getRemoteLastUpdate(res);
+				if (err) {
+					if (err.code === 404) {
+						winston.info('There is no gist with such gist id on the server');
+						winston.info('Let’s create new gist');
 
-				winston.info('localUpdate', localUpdate);
-				winston.info('remoteUpdate', remoteUpdate);
+						self.updateLocalLastUpdate();
 
+						var msg = {
+							"description": "optional desc: ",
+							"public": true,
+							'files': self.getLocalFiles()
+						};
+						
+						winston.info('Create gist MSG object', msg);
 
-				if (localUpdate != remoteUpdate) {
-					winston.info('Sync required, ’cause of timestamps are not identical');
-					winston.info('Timestamps delta (local-remote): ', localUpdate - remoteUpdate);
+						_.ghCreateGist(msg, function (err, res) {
+							if (err) throw err;
 
-					if (localUpdate > remoteUpdate) {
-						winston.info('Sync direction: LOCAL → REMOTE');
-
-						self.updateRemote(res, function (err, res) {
-							winston.info('Remote update successfull');
-							
-							winston.info('End of sync step.');
-							self.syncIsGoing = false;
+							self.options('gistId', res.id);
+							self.runSync();
 						});
 					} else {
-						winston.info('Sync direction: REMOTE → LOCAL');
-
-						self.updateLocal(res, function (err, res) {
-							winston.info('Local update successfull');
-							
-							winston.info('End of sync step.');
-							self.syncIsGoing = false;
-						});
+						throw err;
 					}
-				} else {
-					winston.info('Two Copies are synced between itself');
-					winston.info('End of sync step.');
-					self.syncIsGoing = false;
+				}
+
+				if (!err) {
+
+					self.updateLocalLastUpdate();
+					
+					var localUpdate = self.getLocalLastUpdate();
+					var remoteUpdate = self.getRemoteLastUpdate(res);
+
+					winston.info('localUpdate', localUpdate);
+					winston.info('remoteUpdate', remoteUpdate);
+
+
+					if (localUpdate != remoteUpdate) {
+						winston.info('Sync required, ’cause of timestamps are not identical');
+						winston.info('Timestamps delta (local-remote): ', localUpdate - remoteUpdate);
+
+						if (localUpdate > remoteUpdate) {
+							winston.info('Sync direction: LOCAL → REMOTE');
+
+							self.updateRemote(res, function (err, res) {
+								winston.info('Remote update successfull');
+								
+								winston.info('End of sync step.');
+								self.syncIsGoing = false;
+							});
+						} else {
+							winston.info('Sync direction: REMOTE → LOCAL');
+
+							self.updateLocal(res, function (err, res) {
+								winston.info('Local update successfull');
+								
+								winston.info('End of sync step.');
+								self.syncIsGoing = false;
+							});
+						}
+					} else {
+						winston.info('Two Copies are synced between itself');
+						winston.info('End of sync step.');
+						self.syncIsGoing = false;
+					}
 				}
 
 			}
@@ -715,7 +732,6 @@ STsync = function () {
 				if ((validGist) && _.isPositiveInteger(validGist.id)) {
 					winston.info('Gist was found on the server');
 					
-
 					self.options('gistId', validGist.id);
 
 					cb();
@@ -737,7 +753,7 @@ STsync = function () {
 					_.ghCreateGist(msg, function (err, res) {
 						if (err) throw err;
 
-	 					self.options('gistId', res.id);
+						self.options('gistId', res.id);
 						cb();
 					});
 
@@ -755,7 +771,7 @@ STsync = function () {
 		var required = self.options('requiredFiles');
 
 		winston.info('gistFiles', gistFiles);
-		winston.info('required', required);
+		winston.info('required files', required);
 		var intersection = _.intersection(required, gistFiles);
 		
 		winston.info('intersection', intersection);
@@ -810,7 +826,7 @@ STsync = function () {
 
 
 		var general =  _.getJSON( _.readFile(self.generalSettingsFile) );
-		var user    = _.getJSON( _.readFile( self.getUserSettingsFile() ) );
+		var user    = _.getJSON( _.readFile( self.userSettingsFile ) );
 		
 		winston.info('general settings: ', general);
 		winston.info('user settings: ', user);
@@ -830,10 +846,7 @@ STsync = function () {
 
 		winston.info('settings', settings);
 
-		_.writeFile(
-			this.userSettingsFile,
-			_.formatJSON(settings)
-		);
+		_.writeFile( this.userSettingsFile, _.formatJSON(settings) );
 	};
 
 
