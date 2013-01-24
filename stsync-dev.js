@@ -158,6 +158,7 @@ STsync = function () {
 	var self = this;
 
 	self.relativePath        = './Data/Packages/';
+	// self.relativePath        = './../';
 	self.relativePluginPath  = self.relativePath + 'STsync/';
 	self.relativeUserPath    = self.relativePath + 'UserFake/';
 	self.settingsFile        = 'stsync.sublime-settings';
