@@ -13,24 +13,22 @@ var OAUTH = {
 	port: 2121
 };
 
+sync();
 
-
-sync()
-	.set('settingsFolder', folder);
-	if (_.isUndefined(username)) {
-		sync().auth(
-			OAUTH,
-			function () {
-				sync().init();
-			}
-		);
-	} else {
-		sync().auth(
-			username, password,
-			function () {
-				sync().init();
-			}
-		);
-	}
+if (_.isUndefined(username)) {
+	sync().auth(
+		OAUTH,
+		function () {
+			sync().init();
+		}
+	);
+} else {
+	sync().auth(
+		username, password,
+		function () {
+			sync().init();
+		}
+	);
+}
 
 
