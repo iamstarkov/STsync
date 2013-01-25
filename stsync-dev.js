@@ -158,10 +158,7 @@ STsync = function (relative) {
 	var self = this;
 
 	self.relativePath        = relative+'/';
-	console.log('-----------');
-	console.log(self.relativePath);
-	console.log('-----------');
-	// self.relativePath        = './../';
+
 	self.relativePluginPath  = self.relativePath + 'STsync/';
 	self.relativeUserPath    = self.relativePath + 'UserFake/';
 	self.settingsFile        = 'stsync.sublime-settings';
@@ -706,7 +703,7 @@ STsync = function (relative) {
 			winston.info('Sync delta: ' + delta + 'sec');
 			if (delta !== 0) {
 				if (delta < 0) {
-					self.LocaleUpdate(gist, function (err, res) {
+					self.LocalUpdate(gist, function (err, res) {
 						self.syncIsGoing = false;
 						winston.info('Successfull sync');
 					});
