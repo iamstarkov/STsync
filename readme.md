@@ -7,31 +7,32 @@ Sublime Text plugin for syncronising configuration. Read more in my userecho [su
 
 ## Changelog: ##
 
-* 0.0.11 — Refactoring: added normal logger ([winston][2]
+* 0.1.0  *(25 jan 2012)* — Created python wrapper
+* 0.0.13 *(24 jan 2012)* — Refactoring end
+* 0.0.12 *(23 jan 2012)* — Refactoring: chaining
+* 0.0.11 *(20 jan 2012)* — Refactoring: added normal logger ([winston][2]
 * 0.0.10 *(18 jan 2012)* — Refactoring start (hide OAUTH in stsync methods)
-* 0.0.9 *(18 jan 2012)* — Created OAUTH authorization via web interface
-* 0.0.8 *(17 jan 2012)* — Synchronization worked
-* 0.0.7 *(16 jan 2012)* — Synchronization demo added (deprecated, because different servers cannot exists at one port, which is one of the required case for using oauth)
-* 0.0.6 *(16 jan 2012)* — Update local functionality
-* 0.0.5 *(16 jan 2012)* — Update remote functionality added
-* 0.0.4 *(15 jan 2012)* — Local and remote copy added
-* 0.0.3 *(15 jan 2012)* — Synchronization step added
-* 0.0.2 *(15 jan 2012)* — Initializing finished
-* 0.0.1 *(09 jan 2012)* — Testing import/export functionality
+* 0.0.9  *(18 jan 2012)* — Created OAUTH authorization via web interface
+* 0.0.8  *(17 jan 2012)* — Synchronization worked
+* 0.0.7  *(16 jan 2012)* — Synchronization demo added (deprecated, because different servers cannot exists at one port, which is one of the required case for using oauth)
+* 0.0.6  *(16 jan 2012)* — Update local functionality
+* 0.0.5  *(16 jan 2012)* — Update remote functionality added
+* 0.0.4  *(15 jan 2012)* — Local and remote copy added
+* 0.0.3  *(15 jan 2012)* — Synchronization step added
+* 0.0.2  *(15 jan 2012)* — Initializing finished
+* 0.0.1  *(09 jan 2012)* — Testing import/export functionality
 
 
 ## Roadmap ##
 
-* 0.0.12 — Refactoring: polimorhism for CopyLocal and CopyRemote
-* 0.0.13 — Refactoring: chaining
-* 0.0.14 — Refactoring end
-* 0.0.15 — Documentation writed and compiled
-* 0.0.16 — Tests writed
-* 0.0.17 — Tests successfully passing
-* 0.1.0 — Created python wrapper sketch…
+* 0.1.1 — Documentation writed and compiled
+* 0.1.2 — Tests writed
+* 0.1.3 — Tests successfully passing
 * 0.1.1 — Added ability for extension (other interfaces for CopyRemote, CopyLocal)
 * 0.0.N — Created python sketch and other steps, which are not known yet…
 
+TODO:
+* make timestamps to be independent from timezones
 
 ## Requirements ##
     
