@@ -154,10 +154,13 @@ _.mixin({
 });
 
 
-STsync = function () {
+STsync = function (relative) {
 	var self = this;
 
-	self.relativePath        = './Data/Packages/';
+	self.relativePath        = relative+'/';
+	console.log('-----------');
+	console.log(self.relativePath);
+	console.log('-----------');
 	// self.relativePath        = './../';
 	self.relativePluginPath  = self.relativePath + 'STsync/';
 	self.relativeUserPath    = self.relativePath + 'UserFake/';
@@ -168,6 +171,8 @@ STsync = function () {
 
 	self.syncIsGoing = false;
 
+	// self.relativePluginPath+'logs/'+moment().format('LL')+'.txt',
+	// C:
 	winston.add(
 		winston.transports.File,
 		{
@@ -254,8 +259,10 @@ STsync = function () {
 					"type": "oauth",
 					"token": self.token
 				});
-
+				
+				// app.close();
 				cb();
+
 				
 				process.nextTick(function () {
 					return done(null, profile);
@@ -311,6 +318,8 @@ STsync = function () {
 			passport.authenticate('github', { failureRedirect: '/login' }),
 			function(req, res) {
 				res.redirect('/');
+				
+				// server.close();
 			}
 		);
 
@@ -319,9 +328,9 @@ STsync = function () {
 			res.redirect('/');
 		});
 
-		app.listen(options.port);
+		var server = app.listen(options.port);
+		forceOpen('http://'+options.host+':'+options.port+'/auth/github');
 
-		forceOpen('http://'+options.host+':'+options.port+'/login');
 
 		function ensureAuthenticated(req, res, next) {
 			if (req.isAuthenticated()) { return next(); }

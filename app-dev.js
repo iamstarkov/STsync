@@ -5,8 +5,9 @@ var _      = require('underscore');
 
 var args     = process.argv.slice(2);
 // var folder   = args[0];
-var username = args[0];
-var password = args[1];
+var relative = args[0];
+var username = args[1];
+var password = args[2];
 
 var OAUTH = {
 	appId: '5f4f0546d36a62e59428',
@@ -15,7 +16,7 @@ var OAUTH = {
 	port: 2121
 };
 
-var app = stsync();
+var app = stsync(relative);
 // app.relativePath = './Data/Packages/'; // folder
 
 
