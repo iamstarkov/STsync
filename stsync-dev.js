@@ -35,7 +35,21 @@ _.mixin({
 		return moment(unixSec*1000)/1000;
 	},
 	mtime2unixSec : function(mtime) {
+
+
 		return moment(mtime).unix();
+	},
+	timezone2utc : function(timezoneTimestamp) {
+		var offsetInMin = new Date().getTimezoneOffset();
+		var utcTimestamp = timezoneTimestamp + offsetInMin*60;
+		return utcTimestamp;
+	},
+	utc2timezone : function(utcTimestamp) {
+		// https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Date/parse
+		var offsetInMin = new Date().getTimezoneOffset();
+		var timezoneTimestamp = utcTimestamp - offsetInMin*60;
+
+		return timezoneTimestamp;
 	},
 	getJSON : function (JSONstring) {
 		return eval('(' + JSONstring + ')');
@@ -406,16 +420,19 @@ STsync = function (relative) {
 		
 		var timestamp = self.RemoteGetTimestamp(gist);
 
+
+		timezoneTimestamp = _.utc2timezone(timestamp);
+
 		_.each(remoteFilesList, function (element, index, list) {
 
 			var filePath = this.relativeUserPath+element;
 			_.writeFile(filePath, _.unescapeQuotes(gist.files[element].content) );
 			
-			_.updateMtime(filePath, _.unixSec2mtime(timestamp));
+			_.updateMtime(filePath, _.unixSec2mtime(timezoneTimestamp));
 			
 		});
 
-		_.updateMtime(this.relativeUserPath, _.unixSec2mtime(timestamp));
+		_.updateMtime(this.relativeUserPath, _.unixSec2mtime(timezoneTimestamp));
 
 		cb();
 	};
@@ -456,7 +473,13 @@ STsync = function (relative) {
 	};
 
 	self.LocalUpdateTimestamp = function () {
-
+		// папка с файлами
+		//		список локальных таймстемпов
+		//		локальный таймстемп для папки
+		//		нахожу максимальный
+		//		перевожу максимум в utc таймстемп
+		//		сравниваю с таймстемпом из файла
+		//		если больше, то обновляю файл новым таймстемпом
 		var filesMtime = _.compact(
 			_.map(
 				fs.readdirSync(self.relativeUserPath),
@@ -464,6 +487,7 @@ STsync = function (relative) {
 					var mtime, mtime_unix;
 					if (file != self.lastUpdateFile) {
 						mtime = fs.statSync(self.relativeUserPath + file).mtime;
+
 						return _.mtime2unixSec(mtime);
 					}
 				}
@@ -480,12 +504,14 @@ STsync = function (relative) {
 
 		var maxTimestamp = _.max(mtimes);
 
+		var utcMaxTimestamp = _.timezone2utc(maxTimestamp);
+
 		if (
-			parseInt(maxTimestamp, 10) !== parseInt(self.LocalGetTimestamp(), 10)
+			parseInt(utcMaxTimestamp, 10) !== parseInt(self.LocalGetTimestamp(), 10)
 		) {
 			_.writeFile(
 				self.relativeUserPath+self.lastUpdateFile,
-				maxTimestamp
+				utcMaxTimestamp
 			);
 		}
 	};
