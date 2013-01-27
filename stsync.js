@@ -187,7 +187,8 @@ STsync = function (relative) {
 	winston.add(
 		winston.transports.File,
 		{
-			filename: self.relativePluginPath+'logs/'+moment().format('LL')+'.txt',
+			// filename: self.relativePluginPath+'logs/'+moment().format('LL')+'.txt',
+			filename: self.relativePluginPath+'logs/log.txt',
 			// filename: './logs/log.txt',
 			maxFiles: 3,
 			maxsize: 10000000 // 10M Bytes ~ 10k Kbytes ~ 10 Mbytes
