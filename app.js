@@ -1,5 +1,5 @@
 // app.js
-var stsync = require('./stsync-dev.js');
+var stsync = require('./stsync.js');
 var _      = require('underscore');
 
 
@@ -25,3 +25,4 @@ if ( _.isUndefined(username) ) {
 } else {
 	app.auth( username, password, app.runSync );
 }
+
