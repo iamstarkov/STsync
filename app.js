@@ -17,8 +17,6 @@ var OAUTH = {
 };
 
 var app = stsync(relative);
-// app.relativePath = './Data/Packages/'; // folder
-
 
 if ( _.isUndefined(username) ) {
 	app.auth( OAUTH, app.runSync );

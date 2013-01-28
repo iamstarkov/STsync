@@ -9,5 +9,8 @@
 		"Preferences.sublime-settings",
 		"stsync.sublime-settings",
 		"stsync.last-update"
+	],
+	"exceptionFilenames": [
+		"cache"
 	]
 }

@@ -65,6 +65,9 @@ _.mixin({
 					.replace(/\}/g, "\n}")       // new line after ‘}’
 		;
 	},
+	hasSubstring : function (string, substring) {
+		return !_.isEqual(string.indexOf(substring), -1);
+	},
 	escapeQuotes : function (string) {
 		// https://en.wikipedia.org/wiki/Quotation_mark#Typing_quotation_marks_on_a_computer_keyboard
 		// https://en.wikipedia.org/wiki/Apostrophe#Entering_apostrophes
@@ -136,6 +139,7 @@ _.mixin({
 		);
 	},
 	ghCreateGist : function(msg, cb) {
+		// console.log(msg.files);
 		github.gists.create(
 			msg,
 			function(err, res) {
@@ -174,7 +178,7 @@ STsync = function (relative) {
 	self.relativePath        = relative+'/';
 
 	self.relativePluginPath  = self.relativePath + 'STsync/';
-	self.relativeUserPath    = self.relativePath + 'UserFake/';
+	self.relativeUserPath    = self.relativePath + 'User/';
 	self.settingsFile        = 'stsync.sublime-settings';
 	self.userSettingsFile    = self.relativeUserPath + self.settingsFile;
 	self.generalSettingsFile = self.relativePluginPath + self.settingsFile;
@@ -196,6 +200,10 @@ STsync = function (relative) {
 		}
 	);
 
+
+	if (!fs.existsSync(self.userSettingsFile)) {
+		_.writeFile(self.userSettingsFile, "{ \"updateFrequency\": 1000}");
+	}
 
 	//===========================================//
 
@@ -451,6 +459,22 @@ STsync = function (relative) {
 
 	self.LocalGetFilesList = function () {
 		var files = fs.readdirSync(this.relativeUserPath);
+		
+		exceptions = self.options('exceptionFilenames');
+
+		files = _.filter(files, function (filename) {
+			var valid = true;
+
+			_.each(exceptions, function (exception, key, list) {
+				if (_.hasSubstring(filename, exception)) {
+					valid = false;
+				}
+			});
+
+			return valid;
+		});
+
+
 		return files;
 	};
 
@@ -650,15 +674,20 @@ STsync = function (relative) {
 
 	self.RemoteInit = function (cb) {
 		winston.info('RemoteInit');
-
 		self.LocalUpdateTimestamp();
+
+		var files = self.LocalGetFiles();
+		// var files = _.object(self.LocalGetFiles());
+		
 		var msg = {
 			"public": true,
-			"description": 'optional desc',
-			"files": self.LocalGetFiles()
+			"description": "optional desc",
+			"files": files
 		};
+
+		winston.info("_.size(msg.files)",  _.size(msg.files));
 		
-		github.gists.create(msg, function(err, gist) {
+		_.ghCreateGist(msg, function(err, gist) {
 			if (err) throw err;
 
 			self.options('gistId', gist.id);
@@ -673,6 +702,7 @@ STsync = function (relative) {
 
 	self.getAllGists = function (cb) {
 		_.ghGetAllGists(
+
 			self.username,
 			1,
 			~~self.options('perPage'),
@@ -749,8 +779,11 @@ STsync = function (relative) {
 	};
 
 	process.on('uncaughtException', function(err) {
-		winston.error(err.stack);
-		process.exit();
+		process.nextTick(function () {
+			winston.error(err);
+			winston.info('exit');
+		});
+		// process.exit();
 	});
 
 	return this;
