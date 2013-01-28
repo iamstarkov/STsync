@@ -23,6 +23,7 @@ You should have [Sublime Text 2][4], [Sublime Package Control][5] and [nodejs][3
 * If error occurs, it will be accessible in `Packages/STsync/logs/log.txt`.
 * **Please, contact** me via email or github issues and report about success or about fail (include `log.txt` to email)
 
+**PS.** I’m showing the nodejs console only for testing purposes.
 
 ## Changelog: ##
 
