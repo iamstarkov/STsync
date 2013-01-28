@@ -2,20 +2,27 @@
 
 Sublime Text plugin for syncronizing configuration. Read more in my userecho [suggestion][1].
 
-### Current state: It is workin now, but plugin need testers. ###
+### Current state: It is workin’ now, but plugin need 10 testers. ###
     
 ## How to test ##
 
 You should have [Sublime Text 2][4], [Sublime Package Control][5] and [nodejs][3] to be installed. Also you should have an [GitHub account](6).  
 
-* Backup you configuration
-* Run ‘Add repository’ with command line (`Ctrl+Shift+P`).  
+* Backup you configuration;
+* Run ‘Add repository’ with command line (`Ctrl+Shift+P`):  
     ![Add repository](http://i.imgur.com/O9re7Dr.png)
-* Paste repo url into the box and press the enter (`https://github.com/matmuchrapna/STsync`)
+* Paste repo url into the box and press the enter (`https://github.com/matmuchrapna/STsync`):  
     ![add the repo](http://i.imgur.com/GFS9w06.png)
-* You will see
+* You will see:  
     ![success message](http://i.imgur.com/Py8USjd.png)
-* After plugin will start. It will open the new tab in your favourite browser and ask your permissions to STsync application — it have permission only to [gist][7] service, And this way is **password input free**.
+* Plugin will start automatically:  
+    ![nodejs console](http://img9.imageshack.us/img9/5564/e4de22d8a741407285a1070.png)
+* It will open the new tab in your favourite browser and ask your permissions to STsync application — it have permission only to [gist][7] service:  
+    ![OAUTH APP](http://i.imgur.com/YQAcROt.png)
+* After Auth operation it will start permanent sync loop, with logging to console and file.
+* If error occurs, it will be accessible in `Packages/STsync/logs/log.txt`.
+* **Please, contact** me via email or github issues and report about success or about fail (include `log.txt` to email)
+
 
 ## Changelog: ##
 
@@ -46,6 +53,6 @@ You should have [Sublime Text 2][4], [Sublime Package Control][5] and [nodejs][3
 [2]: https://github.com/flatiron/winston "multi-transport async logging library for node.js"
 [3]: http://nodejs.org/ "v0.8.18"
 [4]: http://www.sublimetext.com/2 "Sublime Text is a sophisticated text editor for code, markup and prose. You'll love the slick user interface, extraordinary features and amazing performance."
-[5]: http://wbond.net/sublime_packages/package_control/installation "http://wbond.net/sublime_packages/package_control/installation"
+[5]: http://wbond.net/sublime_packages/package_control/installation "Sublime Package Control installation"
 [6]: https://github.com/ "Github — Build software better, together."
 [7]: http://gist.github.com/ "Gist is a simple way to share snippets and pastes with others. All gists are git repositories, so they are automatically versioned, forkable and usable as a git repository."
